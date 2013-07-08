@@ -49,6 +49,11 @@ EOT
     specify { Issue.new(valid_attributes.merge({:summary => ' '})).should_not be_valid }
     specify { Issue.new(valid_attributes.merge({:summary => "\n"})).should_not be_valid }
 
+    specify { Issue.new(valid_attributes.merge({:description => "multi\nline\ntest1"})).should be_valid }
+    specify { Issue.new(valid_attributes.merge({:description => "multi\n\nline\ntest2"})).should be_valid }
+    specify { Issue.new(valid_attributes.merge({:description => "multi\n\nline\n\ntest3"})).should be_valid }
+    specify { Issue.new(valid_attributes.merge({:description => "multi\n\n line\n\ntest4"})).should be_valid }
+
     describe "type checking" do
       specify { expect { Issue.new(valid_attributes.merge({:created_at => "abc123"})) }.to raise_error(ArgumentError) }
       specify { expect { Issue.new(valid_attributes.merge({:created_at => 123})) }.to raise_error(ArgumentError) }
@@ -235,11 +240,11 @@ EOT
   describe "to_s" do
     it "should return a formatted string" do
       text = <<-EOT.strip
-ID          : #{issue.id}"
+ID          : #{issue.id}
 Created At  : #{issue.created_at}
-
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
+---
 #{issue.description}      
 EOT
       issue.to_s.should eq text

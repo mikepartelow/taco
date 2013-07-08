@@ -8,7 +8,6 @@ EDITOR_PATH = File.realdirpath "./spec/editor.rb"
 def ex(args, opts={:env => {}})
   r, w = IO.pipe
 
-  args = args.join(' ') if args.is_a?(Array)  
   cmd = "cd #{TMP_PATH} && #{TACO_PATH} #{args}"
 
   Process.wait(Process.spawn(opts[:env], cmd, :out => w))
@@ -56,46 +55,61 @@ describe "Command Line Interface" do
       end      
     end
 
-    it "does something useful when listing 0 issues"
+    it "does something useful when listing 0 issues" do
+      FileUtils.rm_rf(taco.home)
+      
+      r, out = ex 'list'
+      r.should_not eq 0
+      out.should =~ /Found no issues./
+    end
   end
   
   describe "show" do    
     before { taco.init! ; taco.write! issues }
     
     it "displays an issue" do
-      r, out = ex [ 'show', issues[0].id ]
+      r, out = ex 'show %s' % issues[0].id
       r.should eq 0
       out.should eq issues[0].to_s
 
-      r, out = ex [ 'show', issues[0].id[0...8] ]
+      r, out = ex 'show %s' % issues[0].id[0...8]
       r.should eq 0
       out.should eq issues[0].to_s
       
-      r, out = ex [ 'show', issues[0].id, issues[1].id ]
+      r, out = ex 'show %s %s' % [ issues[0].id, issues[1].id ]
       r.should eq 0
       out.should eq issues[0].to_s + "\n\n" + issues[1].to_s
     end
 
     it "shows id" do
-      r, out = ex [ 'show', issues[0].id ]
+      r, out = ex 'show %s' % issues[0].id
       r.should eq 0
       out.should =~ /ID\s+:\s+#{issues[0].id}/
     end
 
     it "shows created_at" do
-      r, out = ex [ 'show', issues[0].id ]
+      r, out = ex 'show %s' % issues[0].id
       r.should eq 0
       out.should =~ /Created At\s+:\s+#{issues[0].created_at}/
     end
     
     it "does not display template comments" do
-      r, out = ex [ 'show', issues[0].id ]
+      r, out = ex 'show %s' % issues[0].id
       r.should eq 0
       out.should_not =~ /^#/
     end          
     
-    it "displays an error message when issue is not found"     
-    it "displays an error message when given issue_id is ambiguous"
+    it "displays an error message when issue is not found" do
+      r, out = ex 'show 123abc'
+      r.should_not eq 0
+      out.should =~ /Issue not found./
+    end
+    
+    it "displays an error message when given issue_id is ambiguous" do
+      r, out = ex 'show 1'
+      r.should_not eq 0
+      out.should =~ /Found several matching issues/
+    end
   end
   
   describe "new" do
@@ -121,7 +135,7 @@ EOT
     
     it "creates a new issue from a file" do    
       issues_before = taco.list
-      r, out = ex [ 'new', issue_path ]      
+      r, out = ex 'new %s' % issue_path
       r.should eq 0
       out.should include("Created Issue ")
       issue_id = out.split("Created Issue ")[1]

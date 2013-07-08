@@ -20,6 +20,8 @@ require 'time'
 #  - whenever we read an Issue from a file, raise if the filename doesn't match Issue.id
 #  - validate_attributes Issue fields versus list of acceptable values (kind: Defect, Feature Request, etc.)
 
+# - activities (or a better name): timestamped, attributed log of changes to an issue
+
 class Issue  
   include Comparable
   
@@ -34,6 +36,7 @@ class Issue
 # Lines beginning with # will be ignored.
 Summary     : %{summary}
 Kind        : %{kind}
+---
 # Everything past this line is Issue Description
 %{description}
 EOT
@@ -148,14 +151,14 @@ EOT
   
   def to_s    
     header =<<-EOT.strip
-ID          : #{id}"
+ID          : #{id}
 Created At  : #{created_at}
 EOT
     
     body = TEMPLATE % @issue
     body = body.lines.reject { |l| l.start_with?('#') }.join
     
-    header + "\n\n" + body
+    header + "\n" + body
   end
   
   def to_json
@@ -206,9 +209,7 @@ EOT
         return false unless allowed_values.include? @issue[attr]
       end
       
-      # we don't have to check empty-string variants (whitespace) because all fields have been .strip()ed when being set
-      #
-      return false if SCHEMA_ATTRIBUTES[attr][:class] == String && @issue[attr] =~ /^$/
+      return false if SCHEMA_ATTRIBUTES[attr][:class] == String && @issue[attr] =~ /\A\s*\Z/
     end
     
     true
@@ -308,8 +309,14 @@ EOT
     unless File.exist? issue_path
       entries = Dir[File.join(@home, "*#{issue_id}*")]
 
-      raise NotFound.new unless entries.size > 0
-      raise Ambiguous.new("Found several matching issues: %s" % entries.join(' ')) unless entries.size == 1
+      raise NotFound.new("Issue not found.") unless entries.size > 0
+      unless entries.size == 1
+        issue_list = entries.map do |entry|
+          issue = read(File.basename(entry))
+          "#{issue.id} : #{issue.summary}"
+        end
+        raise Ambiguous.new("Found several matching issues:\n%s" % issue_list.join("\n")) 
+      end
 
       issue_path = entries[0]
       issue_id = File.basename entries[0]
@@ -357,7 +364,9 @@ class TacoCLI
     when 'init'
       @taco.init!      
     when 'list'
-      @taco.list(:short_ids => true).map { |issue, short_id| "#{short_id} : #{issue.summary}" }.join("\n")
+      the_list = @taco.list(:short_ids => true).map { |issue, short_id| "#{short_id} : #{issue.summary}" }
+      raise Issue::NotFound.new("Found no issues.") unless the_list.size > 0
+      the_list.join("\n")
     when 'show'
       args.map { |id| @taco.read(id).to_s }.join("\n\n")        
     when 'template'
@@ -413,5 +422,12 @@ end
 
 if __FILE__ == $PROGRAM_NAME
   cli = TacoCLI.new(Taco.new)
-  puts cli.execute! ARGV[0], *ARGV[1..-1]
+  begin
+    puts cli.execute! ARGV[0], *ARGV[1..-1]    
+  rescue Exception => e
+    puts e.to_s
+    exit 1
+  end
+  
+  exit 0
 end
