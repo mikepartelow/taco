@@ -158,7 +158,9 @@ EOT
       attrs.each { |attr, value| issue.send(attr).should eq value }
     end
     
-    it "sets default values for issue fields"
+    describe "default values" do
+      it "sets default values for issue fields"
+    end
     
     describe "validation" do
       it "doesn't allow disallowed-value values"
@@ -181,6 +183,10 @@ EOT
   
   describe "comment" do
     it "adds comments to an existing issue"
+  end
+  
+  describe "history" do
+    it "shows revision history for an issue"
   end
   
   describe "template" do
