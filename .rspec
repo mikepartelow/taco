@@ -1,0 +1,1 @@
+--format progress -I. --require spec_helper
