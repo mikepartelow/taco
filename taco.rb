@@ -9,18 +9,12 @@ require 'time'
 
 # TODO:
 #  - store schema version in each issue
-#  - config files (user, project)
 #  - query by status
 #  - editing: full (editor) or quick (commandline updates, like new arguments)
 #  - arguments to 'new': component:foo kind:bar summary:'ick thud wank'
 #  - arg parsing: https://github.com/visionmedia/commander (check out their other stuff, too)
-#  - unified error handler that prints messages to stderr
-#  - method_missing (http://technicalpickles.com/posts/using-method_missing-and-respond_to-to-create-dynamic-methods/)
 #  - should taco config and issues go into different directories?
-#  - whenever we read an Issue from a file, raise if the filename doesn't match Issue.id
-#  - validate_attributes Issue fields versus list of acceptable values (kind: Defect, Feature Request, etc.)
-
-# - activities (or a better name): timestamped, attributed log of changes to an issue
+#  - activities (or a better name): timestamped, attributed log of changes to an issue
 
 class Issue  
   include Comparable
@@ -114,39 +108,31 @@ EOT
     "#<#{self.class}:0x%016x %s>" % [ object_id, fields ]
   end
   
-  def id
-    @issue[:id]
-  end
-  
-  def created_at
-    @issue[:created_at]
-  end
-  
-  def description
-    @issue[:description]
-  end
+  def method_missing(method, *args, &block)
+    method_str = method.to_s
+    attr = method_str.gsub(/=$/, '').to_sym
 
-  def description=(description)
-    @issue = Issue::validate_attributes(@issue.merge({ :description => description }))
-    description
+    if data = SCHEMA_ATTRIBUTES[attr]
+      if method_str[-1] == '='
+        raise NoMethodError unless data[:settable]
+        @issue = Issue::validate_attributes(@issue.merge( { attr => args.first } ) )
+      else
+        @issue[attr]
+      end
+    else
+      super
+    end
   end
   
-  def kind
-    @issue[:kind]
-  end
+  def respond_to?(method)
+    method_str = method.to_s
+    attr = method_str.gsub(/=$/, '').to_sym
 
-  def kind=(kind)
-    @issue = Issue::validate_attributes(@issue.merge({ :kind => kind }))
-    kind
-  end
-  
-  def summary
-    @issue[:summary]
-  end
-  
-  def summary=(summary)
-    @issue = Issue::validate_attributes(@issue.merge({ :summary => summary }))
-    summary
+    if data = SCHEMA_ATTRIBUTES[attr]
+      return method_str[-1] != '=' || data[:settable]
+    end
+    
+    super
   end
   
   def to_s    
