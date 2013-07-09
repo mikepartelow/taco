@@ -11,7 +11,8 @@ require 'time'
 #  - store schema version in each issue
 #  - query by status
 #  - editing: full (editor) or quick (commandline updates, like new arguments)
-#  - arguments to 'new': component:foo kind:bar summary:'ick thud wank'
+#  - arguments to 'new': taco new component:foo kind:bar summary:'ick thud wank'
+#  - simplified editing: taco edit 123abc summary:'change only this one field'
 #  - arg parsing: https://github.com/visionmedia/commander (check out their other stuff, too)
 #  - should taco config and issues go into different directories?
 #  - activities (or a better name): timestamped, attributed log of changes to an issue
