@@ -28,7 +28,6 @@ describe Taco do
       it "creates the home directory and config file" do
         taco.init!
         File.exists?(taco.home).should be_true
-        File.exists?(File.join(taco.home, Taco::RC_NAME)).should be_true
       end
     
       it "raises an exception if initializing an existing directory" do
@@ -38,8 +37,8 @@ describe Taco do
         }.to raise_error(IOError)
       end
     
-      it "returns a helpful instructional string" do      
-        taco.init!.should include(File.join(root, Taco::HOME_DIR, Taco::RC_NAME))
+      it "returns a string with the initialized home dir" do      
+        taco.init!.should include(File.join(root, Taco::HOME_DIR))
       end
     end  
     

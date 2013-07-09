@@ -218,25 +218,6 @@ end
 
 class Taco
   HOME_DIR = '.taco'
-  RC_NAME = '.tacorc'
-  RC_TEXT =<<-EOT.strip
-# Empty lines and lines beginning with # will be ignored.
-#
-# A comma separated list of valid Issue Kinds.
-#
-Kinds = Defect, Feature Request
-
-# A comma separated list of valid Issue States.
-States = Open, Closed
-
-# A comma seprated list of valid Components.
-Components = Widget, Doohickey, Dingus
-
-# Comment these out to have no default.
-DefaultKind = Defect
-DefaultState = Open
-# DefaultComponent = Widget 
-EOT
 
   attr_accessor :home
   
@@ -245,51 +226,14 @@ EOT
   
   def initialize(root_path=nil)    
     @home = File.join(root_path || Dir.getwd, HOME_DIR)
-    # @rc_path = File.join(@home, RC_NAME)
-    # 
-    # @config = {}
-    # parse_rc! if File.exists?(@rc_path)
   end 
-  
-  # def parse_rc!
-  #   text = open(@rc_path) { |f| f.read }
-  #   
-  #   text.lines.each do |line|
-  #     next if line =~ /^#/ || line =~ /^\s+$/
-  #     
-  #     key, values = line.split(/=/, 2).map(&:strip)
-  #     if key.start_with?('Default')
-  #       @config[key] = values
-  #     else
-  #       @config[key] = values.split(',').map(&:strip)
-  #     end
-  #   end
-  # end
-  # 
-  # def set_defaults(text)
-  #   # FIXME: why does Taco know so much about Issue?
-  #   #
-  #   text.lines.map do |line|      
-  #     if line =~ /%{(\w+)}/
-  #       key = $1
-  #       default = "Default#{key.capitalize}"
-  # 
-  #       line % { key.to_sym => @config[default] }
-  #     else
-  #       line
-  #     end
-  #   end.join
-  # end
   
   def init!
     raise IOError.new("Could not create #{@home}, directory already exists.") if File.exists?(@home)
 
     FileUtils.mkdir_p(@home)
   
-    rc_path = File.join(@home, RC_NAME)  
-    open(rc_path, 'w') { |f| f.write(RC_TEXT) }  
-  
-    "Initialized #{@home}\nPlease edit #{rc_path} as needed."
+    "Initialized #{@home}"
   end
   
   def write!(issue_or_issues)
@@ -352,17 +296,36 @@ EOT
       end
     end.sort_by { |thing| opts[:short_ids] ? thing[0] : thing}
   end
+  
+  
 end
 
 class TacoCLI
+  RC_NAME = '.tacorc'
+  RC_TEXT =<<-EOT.strip
+  # Empty lines and lines beginning with # will be ignored.
+  #
+  # A comma separated list of valid Issue Kinds.
+  #
+  Kinds = Defect, Feature Request
+
+  # Comment out to have no default.
+  DefaultKind = Defect
+EOT
+
   def initialize(taco=nil)
     @taco = taco || Taco.new
+    
+    @rc_path = File.join(@taco.home, RC_NAME)
+    @config = parse_rc
   end
     
   def execute!(cmd, *args)
     case cmd
     when 'init'
-      @taco.init!      
+      out = @taco.init!
+      open(@rc_path, 'w') { |f| f.write(RC_TEXT) }
+      out + "\nPlease edit the config file at #{@rc_path}"
     when 'list'
       the_list = @taco.list(:short_ids => true).map { |issue, short_id| "#{short_id} : #{issue.summary}" }
       raise Issue::NotFound.new("Found no issues.") unless the_list.size > 0
@@ -384,12 +347,8 @@ class TacoCLI
     end          
   end
   
-  def interactive_new!
-    def set_defaults(str)
-      str
-    end
-    
-    template = set_defaults(Issue::TEMPLATE)
+  def interactive_new!    
+    template = format_template(Issue::TEMPLATE)
     issue = nil      
     
     file = Tempfile.new('taco')    
@@ -418,6 +377,33 @@ class TacoCLI
   
     @taco.write! issue
   end
+  
+  private
+    def format_template(text)
+      text % @config[:defaults]
+    end
+    
+    def parse_rc
+      defaults = Hash[Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.map { |attr, data| [ attr, nil ] } ] 
+      config = { :defaults => defaults }
+      
+      if File.exist? @rc_path
+        open(@rc_path) do |f|
+          f.readlines.each do |line|
+            if line =~ /^Default(\w+)\s+=\s+(\w+)/
+              attr, value = $1.strip.downcase.to_sym, $2.strip
+
+              if (data = Issue::SCHEMA_ATTRIBUTES[attr]) && data[:settable]
+                config[:defaults][attr] = value
+              end
+            end              
+          end
+        end
+      end
+
+      config
+    end
+ 
 end
 
 if __FILE__ == $PROGRAM_NAME

@@ -3,6 +3,7 @@ require 'fileutils'
 
 TACO_PATH = File.realdirpath "./taco.rb"
 TMP_PATH = File.realdirpath "./spec/tmp"
+TACORC_PATH = File.join(TMP_PATH, '.taco', '.tacorc')
 EDITOR_PATH = File.realdirpath "./spec/editor.rb"
 
 def ex(args, opts={:env => {}})
@@ -31,8 +32,11 @@ describe "Command Line Interface" do
       File.exists?(taco.home).should_not be_true
       r, out = ex 'init'
       r.should eq 0
-      out.should include(taco.home)            
-      File.exists?(taco.home).should be_true      
+      out.should include(taco.home)
+      File.exists?(taco.home).should be_true
+      
+      out.should include(TacoCLI::RC_NAME)   
+      File.exists?(File.join(taco.home, TacoCLI::RC_NAME)).should be_true      
     end
     
     it "initializes non-CWD directory via env var"
@@ -157,9 +161,43 @@ EOT
       issue = taco.read(issue_id)
       attrs.each { |attr, value| issue.send(attr).should eq value }
     end
+
+    it "strips ruby format strings from the template" do
+      r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
+      r.should eq 0
+      out.should include("Created Issue ")
+      
+      issue_id = out.split("Created Issue ")[1]
+    
+      issue = taco.read(issue_id)
+      issue.to_s.should_not include('%{summary}')
+    end
+
+    describe "tacorc" do
+      it "gives helpful error message on parse failure"
+      it "warns on missing .tacorc"
+      it "creates a useful default .tacorc"
+      it "does not allow defaults for non-settable attrs"
+    end
     
     describe "default values" do
-      it "sets default values for issue fields"
+      let(:tacorc) { <<-EOT.strip
+DefaultKind = MagicString
+EOT
+}
+      it "sets default values for issue fields" do
+        open(TACORC_PATH, 'w') { |f| f.write(tacorc) }
+  
+        r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
+        r.should eq 0
+        out.should include("Created Issue ")
+
+        issue_id = out.split("Created Issue ")[1]
+
+        issue = taco.read(issue_id)
+        issue.to_s.should_not include('%{kind}')        
+        issue.to_s.should include('MagicString')
+      end
     end
     
     describe "validation" do
@@ -172,8 +210,6 @@ EOT
     
     it "complains if no $EDITOR is set for interactive new"
     it "exits nonzero if no issue is created"
-    it "initializes the template with default values"
-    it "strips ruby format strings from the template"
     it "does something nice when aborting new issue creation"
   end
   
