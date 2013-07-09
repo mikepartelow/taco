@@ -1,4 +1,8 @@
 source 'https://rubygems.org'
 
-gem 'rspec'
-gem 'factory_girl'
+gem 'commander'
+
+group :test do
+  gem 'rspec'
+  gem 'factory_girl'
+end
