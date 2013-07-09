@@ -413,6 +413,18 @@ EOT
       defaults = Hash[Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.map { |attr, data| [ attr, nil ] } ] 
       config = { :defaults => defaults, :allowed => {} }
       
+      def set_attr(hash, what, attr, value, line)
+        if data = Issue::SCHEMA_ATTRIBUTES[attr]
+          if data[:settable]
+            hash[attr] = value
+          else
+            raise ParseError.new("Cannot set #{what} for write-protected Issue attribute '#{attr}' on line #{line}")
+          end
+        else
+          raise ParseError.new("Unknown Issue attribute '#{attr}' on line #{line}")
+        end
+      end
+      
       if File.exist? @rc_path
         open(@rc_path) do |f|
           f.readlines.each_with_index do |line, index|
@@ -420,27 +432,10 @@ EOT
             
             if line =~ /^Default(\w+)\s+=\s+(\w+)/
               attr, value = $1.strip.downcase.to_sym, $2.strip
-
-              if data = Issue::SCHEMA_ATTRIBUTES[attr]
-                if data[:settable]
-                  config[:defaults][attr] = value
-                else
-                  raise ParseError.new("Cannot set default for write-protected Issue attribute '#{attr}' on line #{index+1}")
-                end
-              else
-                raise ParseError.new("Unknown Issue attribute '#{attr}' on line #{index+1}")
-              end
+              set_attr(config[:defaults], 'default', attr, value, index+1)
             elsif line =~ /^(\w+)\s*=\s*(.*)$/
               attr, values = $1.strip.downcase.to_sym, $2.split(',').map(&:strip)
-              if data = Issue::SCHEMA_ATTRIBUTES[attr]
-                if data[:settable]
-                  config[:allowed][attr] = values
-                else
-                  raise ParseError.new("Cannot set allowable values for write-protected Issue attribute '#{attr}' on line #{index+1}")
-                end
-              else
-                raise ParseError.new("Unknown Issue attribute '#{attr}' on line #{index+1}")
-              end
+              set_attr(config[:allowed], 'allowed values', attr, values, index+1)
             else
               raise ParseError.new("Unparseable stuff on line #{index+1}")
             end

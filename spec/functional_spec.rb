@@ -182,7 +182,7 @@ EOT
           out.should include "Unknown Issue attribute 'foo' on line 1"
         end
         
-        it "handles unknown allowable values" do
+        it "handles unknown allowed values" do
           open(TACORC_PATH, 'w') { |f| f.write("Foo = Bar, Baz, Ick") }
           r, out = ex 'list'
           r.should_not eq 0
@@ -200,7 +200,7 @@ EOT
           open(TACORC_PATH, 'w') { |f| f.write("Id = Bar, Baz, Ick") }
           r, out = ex 'list'
           r.should_not eq 0
-          out.should include "Cannot set allowable values for write-protected Issue attribute 'id' on line 1"
+          out.should include "Cannot set allowed values for write-protected Issue attribute 'id' on line 1"
         end
                   
         it "handles comments" do
