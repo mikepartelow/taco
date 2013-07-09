@@ -88,6 +88,12 @@ EOT
         Issue.new(valid_attributes.merge({:summary => "\n"})).to_json
       }.to raise_error(Issue::Invalid)
     end
+    
+    it "should raise Invalid when instructed" do
+      expect {
+        Issue.new(valid_attributes.merge({:summary => "\n"})).valid?(:raise => true)
+      }.to raise_error(Issue::Invalid)
+    end
   end
   
   describe "serialization" do

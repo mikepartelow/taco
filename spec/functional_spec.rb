@@ -32,14 +32,14 @@ describe "Command Line Interface" do
       File.exists?(taco.home).should_not be_true
       r, out = ex 'init'
       r.should eq 0
-      out.should include(taco.home)
+      out.should include taco.home
       File.exists?(taco.home).should be_true
       
-      out.should include(TacoCLI::RC_NAME)   
+      out.should include TacoCLI::RC_NAME   
       File.exists?(File.join(taco.home, TacoCLI::RC_NAME)).should be_true      
     end
     
-    it "initializes non-CWD directory via env var"
+    it "initializes non-CWD directory via env var" #v2.0
   end
   
   describe "help" do
@@ -54,8 +54,8 @@ describe "Command Line Interface" do
       r.should eq 0
       out.lines.to_a.size.should eq issues.size
       issues.each do |issue|
-        out.should include(issue.id[0...8])
-        out.should include(issue.summary)
+        out.should include issue.id[0...8]
+        out.should include issue.summary
       end      
     end
 
@@ -135,13 +135,13 @@ EOT
       open(issue_path, 'w') { |f| f.write(template % attrs) }    
     end
     
-    after { File.unlink(issue_path) }
+    after { File.unlink(issue_path) rescue nil }
     
     it "creates a new issue from a file" do    
       issues_before = taco.list
       r, out = ex 'new %s' % issue_path
       r.should eq 0
-      out.should include("Created Issue ")
+      out.should include "Created Issue "
       issue_id = out.split("Created Issue ")[1]
       
       issues_after = taco.list    
@@ -154,7 +154,7 @@ EOT
     it "creates a new issue interactively" do
       r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_INPUT_PATH' => issue_path }
       r.should eq 0
-      out.should include("Created Issue ")
+      out.should include "Created Issue "
       
       issue_id = out.split("Created Issue ")[1]
     
@@ -165,52 +165,147 @@ EOT
     it "strips ruby format strings from the template" do
       r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
       r.should eq 0
-      out.should include("Created Issue ")
+      out.should include "Created Issue "
       
       issue_id = out.split("Created Issue ")[1]
     
       issue = taco.read(issue_id)
-      issue.to_s.should_not include('%{summary}')
+      issue.to_s.should_not include '%{summary}'
     end
 
     describe "tacorc" do
-      it "gives helpful error message on parse failure"
-      it "warns on missing .tacorc"
-      it "creates a useful default .tacorc"
-      it "does not allow defaults for non-settable attrs"
-    end
-    
-    describe "default values" do
-      let(:tacorc) { <<-EOT.strip
-DefaultKind = MagicString
-EOT
-}
-      it "sets default values for issue fields" do
-        open(TACORC_PATH, 'w') { |f| f.write(tacorc) }
-  
-        r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
+      describe "parse failure" do
+        it "handles unknown defaults" do
+          open(TACORC_PATH, 'w') { |f| f.write("DefaultFoo = Bar") }
+          r, out = ex 'list'
+          r.should_not eq 0
+          out.should include "Unknown Issue attribute 'foo' on line 1"
+        end
+        
+        it "handles unknown allowable values" do
+          open(TACORC_PATH, 'w') { |f| f.write("Foo = Bar, Baz, Ick") }
+          r, out = ex 'list'
+          r.should_not eq 0
+          out.should include "Unknown Issue attribute 'foo' on line 1"
+        end
+
+        it "does not allow defaults for non-settable attrs" do
+          open(TACORC_PATH, 'w') { |f| f.write("DefaultId = Bar") }
+          r, out = ex 'list'
+          r.should_not eq 0
+          out.should include "Cannot set default for write-protected Issue attribute 'id' on line 1"
+        end
+        
+        it "does not allow acceptable values for non-settable attrs" do
+          open(TACORC_PATH, 'w') { |f| f.write("Id = Bar, Baz, Ick") }
+          r, out = ex 'list'
+          r.should_not eq 0
+          out.should include "Cannot set allowable values for write-protected Issue attribute 'id' on line 1"
+        end
+                  
+        it "handles comments" do
+          open(TACORC_PATH, 'w') { |f| f.write("#DefaultKind = Whiffle") }
+          r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
+          issue_id = out.split("Created Issue ")[1]
+
+          issue = taco.read(issue_id)
+          issue.kind.should_not eq 'Whiffle'
+        end
+
+        it "handles gibberish" do
+          open(TACORC_PATH, 'w') { |f| f.write("gibblegubble") }
+          r, out = ex 'list'
+          r.should_not eq 0
+          out.should include 'Unparseable stuff on line 1'
+        end
+      end
+      
+      it "creates a default .tacorc" do
+        FileUtils.rm_rf(TMP_PATH)
+        FileUtils.mkdir_p(TMP_PATH)
+        
+        r, out = ex 'init'
         r.should eq 0
-        out.should include("Created Issue ")
-
-        issue_id = out.split("Created Issue ")[1]
-
-        issue = taco.read(issue_id)
-        issue.to_s.should_not include('%{kind}')        
-        issue.to_s.should include('MagicString')
+        File.exists?(TACORC_PATH).should be_true
       end
     end
     
-    describe "validation" do
-      it "doesn't allow disallowed-value values"
-      it "doesn't allow wrong-type values"
-      it "doesn't allow empty required fields"
-      it "doesn't allow unknown fields"
-      it "doesn't allow changing read-only fields"
+    describe "with tacorc" do
+      let(:tacorc) { <<-EOT.strip
+Kind = KindNumber1, KindNumber2, KindNumber3
+DefaultKind = KindNumber2
+EOT
+      }
+      
+      before do
+        open(TACORC_PATH, 'w') { |f| f.write(tacorc) }        
+      end
+      
+      describe "default values" do
+        it "sets default values for issue fields" do  
+          r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
+          r.should eq 0
+          out.should include "Created Issue "
+
+          issue_id = out.split("Created Issue ")[1]
+
+          issue = taco.read(issue_id)
+          issue.to_s.should_not include '%{kind}'        
+          issue.to_s.should include 'KindNumber2'
+        end
+      end
+    
+      describe "validation" do
+        it "doesn't allow disallowed-value values" do
+          r, out = ex 'new %s' % issue_path
+          r.should_not eq 0
+          out.should include "is not an allowed value for Kind"
+        end
+
+        it "doesn't allow changing read-only fields" do
+          issue_text = "ID : 123abc\n" + open(issue_path) { |f| f.read }
+          open(issue_path, 'w') { |f| f.write(issue_text) }
+
+          r, out = ex 'new %s' % issue_path
+          r.should_not eq 0
+          out.should include "Cannot set write-protected Issue attribute: id"          
+        end
+      
+        it "doesn't allow empty required fields" do
+          issue_text = "Summary:\nKind: KindNumber2\nsome description"
+          open(issue_path, 'w') { |f| f.write(issue_text) }
+
+          r, out = ex 'new %s' % issue_path
+          r.should_not eq 0
+          out.should include "Empty string is not allowed for summary"          
+        end
+        
+        it "doesn't allow unknown fields" do
+          issue_text = "Foo : Bar\n" + open(issue_path) { |f| f.read }
+          open(issue_path, 'w') { |f| f.write(issue_text) }
+
+          r, out = ex 'new %s' % issue_path
+          r.should_not eq 0
+          out.should include "Unknown Issue attribute: foo"                    
+        end
+             
+        it "returns to the editor after failed validation in interactive mode so the user doesn't lose all their hard-typed information"
+        
+        it "allows users to specify required fields" # v2.0
+      end
     end
     
-    it "complains if no $EDITOR is set for interactive new"
-    it "exits nonzero if no issue is created"
-    it "does something nice when aborting new issue creation"
+    it "complains if no $EDITOR is set for interactive new" do
+      r, out = ex 'new', :env => { 'EDITOR' => nil }
+      r.should_not eq 0
+      out.should include "Please define $EDITOR in your environment."      
+    end
+    
+    it "does something nice when aborting new issue creation" do
+      r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_ABORT' => 'yes' }
+      r.should eq 0
+      out.should include 'Aborted.'
+    end
   end
   
   describe "edit" do

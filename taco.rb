@@ -56,7 +56,7 @@ EOT
   
   def self.set_allowed_values(attrs)
     attrs.each do |attr, values|
-      raise ArgumentError.new("Unknown attributes: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr      
+      raise ArgumentError.new("Unknown Issue attributes: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr      
       
       SCHEMA_ATTRIBUTES[attr][:allowed_values] = values
     end
@@ -68,7 +68,7 @@ EOT
   def self.validate_attributes(issue_attrs)
     attrs = issue_attrs.dup
     
-    attrs.keys.each { |attr| raise ArgumentError.new("Unknown attribute: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr }
+    attrs.keys.each { |attr| raise ArgumentError.new("Unknown Issue attribute: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr }
     
     SCHEMA_ATTRIBUTES.each do |attr, cfg|
       next unless attrs.include? attr
@@ -162,7 +162,7 @@ EOT
   end
   
   def to_json
-    raise Invalid unless valid?
+    valid? :raise => true
     JSON.pretty_generate(@issue)
   end
   
@@ -186,8 +186,8 @@ EOT
         if SCHEMA_ATTRIBUTES.include?(key) && SCHEMA_ATTRIBUTES[key][:settable]
           issue[key] = value
         else
-          raise ArgumentError.new("Unknown Attribute: #{key}") unless SCHEMA_ATTRIBUTES.include?(key)
-          raise ArgumentError.new("Cannot Set Write-Protected Attribute: #{key}")
+          raise ArgumentError.new("Unknown Issue attribute: #{key}") unless SCHEMA_ATTRIBUTES.include?(key)
+          raise ArgumentError.new("Cannot set write-protected Issue attribute: #{key}")
         end
       else
         issue[:description] += line
@@ -197,19 +197,32 @@ EOT
     Issue.new(issue)
   end
   
-  def valid?
-    return false unless id
+  def valid?(opts={})
+    begin
+      raise Issue::Invalid.new("id is nil") unless id
 
-    SCHEMA_ATTRIBUTES.each { |attr, cfg| return false if cfg[:required] && @issue[attr].nil? }
-
-    @issue.each do |attr, value|
-      return false unless @issue[attr].is_a?(SCHEMA_ATTRIBUTES[attr][:class])
-
-      if allowed_values = SCHEMA_ATTRIBUTES[attr][:allowed_values]
-        return false unless allowed_values.include? @issue[attr]
+      SCHEMA_ATTRIBUTES.each do |attr, cfg| 
+        raise Issue::Invalid.new("Missing required attribute: #{attr}") if cfg[:required] && @issue[attr].nil?
       end
+
+      @issue.each do |attr, value|
+        unless @issue[attr].is_a?(SCHEMA_ATTRIBUTES[attr][:class])
+          raise Issue::Invalid.new("Wrong type: #{attr} (expected #{SCHEMA_ATTRIBUTES[attr][:class]}, got #{@issue[attr.class]})")
+        end
+
+        if allowed_values = SCHEMA_ATTRIBUTES[attr][:allowed_values]
+          unless allowed_values.include? @issue[attr]
+            raise Issue::Invalid.new("#{@issue[attr]} is not an allowed value for #{attr.capitalize}")
+          end
+        end
       
-      return false if SCHEMA_ATTRIBUTES[attr][:class] == String && @issue[attr] =~ /\A\s*\Z/
+        if SCHEMA_ATTRIBUTES[attr][:class] == String && @issue[attr] =~ /\A\s*\Z/
+          raise Issue::Invalid.new("Empty string is not allowed for #{attr}")
+        end
+      end
+    rescue Issue::Invalid
+      return false unless opts[:raise]
+      raise
     end
     
     true
@@ -303,21 +316,25 @@ end
 class TacoCLI
   RC_NAME = '.tacorc'
   RC_TEXT =<<-EOT.strip
-  # Empty lines and lines beginning with # will be ignored.
-  #
-  # A comma separated list of valid Issue Kinds.
-  #
-  Kinds = Defect, Feature Request
+# Empty lines and lines beginning with # will be ignored.
+#
+# A comma separated list of valid values for Issue.kind.
+#
+Kind = Defect, Feature Request
 
-  # Comment out to have no default.
-  DefaultKind = Defect
+# Comment out to have no default.
+DefaultKind = Defect
 EOT
+
+  class ParseError < Exception; end
 
   def initialize(taco=nil)
     @taco = taco || Taco.new
     
     @rc_path = File.join(@taco.home, RC_NAME)
     @config = parse_rc
+    
+    Issue.set_allowed_values @config[:allowed]
   end
     
   def execute!(cmd, *args)
@@ -341,62 +358,92 @@ EOT
         
         "Created Issue #{issue.id}"
       elsif args.size == 0
-        issue = interactive_new!
-        "Created Issue #{issue.id}"
+        if issue = interactive_new!
+          "Created Issue #{issue.id}"
+        else
+          "Aborted."
+        end
       end
     end          
   end
   
-  def interactive_new!    
-    template = format_template(Issue::TEMPLATE)
-    issue = nil      
+  private  
+    def interactive_new!    
+      raise ArgumentError.new("Please define $EDITOR in your environment.") unless ENV['EDITOR']
     
-    file = Tempfile.new('taco')    
-    begin
-      path = file.path
-      file.write(template)
-      file.close
+      template = format_template(Issue::TEMPLATE)
+      issue = nil      
     
-      # FIXME: we should probably consult the exit code here
-      #
-      cmd = "$EDITOR #{path}"
-      system(cmd)
-  
+      file = Tempfile.new('taco')    
       begin
-        open(path) do |f| 
-          text = f.read
-          raise Errno::ENOENT if text == template
-          issue = Issue.from_template(text)
-        end      
-      rescue Errno::ENOENT
-        issue = nil
+        path = file.path
+        file.write(template)
+        file.close
+    
+        # FIXME: we should probably consult the exit code here
+        #
+        cmd = "$EDITOR #{path}"
+        system(cmd)
+  
+        begin
+          open(path) do |f| 
+            text = f.read
+            raise Errno::ENOENT if text == template
+            issue = Issue.from_template(text)
+          end      
+        rescue Errno::ENOENT
+          issue = nil
+        end
+      ensure
+        File.unlink(path) rescue nil
       end
-    ensure
-      File.unlink(path) rescue nil
+
+      if issue
+        @taco.write! issue
+      else
+        nil
+      end
     end
   
-    @taco.write! issue
-  end
-  
-  private
     def format_template(text)
       text % @config[:defaults]
     end
     
     def parse_rc
       defaults = Hash[Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.map { |attr, data| [ attr, nil ] } ] 
-      config = { :defaults => defaults }
+      config = { :defaults => defaults, :allowed => {} }
       
       if File.exist? @rc_path
         open(@rc_path) do |f|
-          f.readlines.each do |line|
+          f.readlines.each_with_index do |line, index|
+            next if line =~ /^#/
+            
             if line =~ /^Default(\w+)\s+=\s+(\w+)/
               attr, value = $1.strip.downcase.to_sym, $2.strip
 
-              if (data = Issue::SCHEMA_ATTRIBUTES[attr]) && data[:settable]
-                config[:defaults][attr] = value
+              if data = Issue::SCHEMA_ATTRIBUTES[attr]
+                if data[:settable]
+                  config[:defaults][attr] = value
+                else
+                  raise ParseError.new("Cannot set default for write-protected Issue attribute '#{attr}' on line #{index+1}")
+                end
+              else
+                raise ParseError.new("Unknown Issue attribute '#{attr}' on line #{index+1}")
               end
-            end              
+            elsif line =~ /^(\w+)\s*=\s*(.*)$/
+              attr, values = $1.strip.downcase.to_sym, $2.split(',').map(&:strip)
+              if data = Issue::SCHEMA_ATTRIBUTES[attr]
+                if data[:settable]
+                  config[:allowed][attr] = values
+                else
+                  raise ParseError.new("Cannot set allowable values for write-protected Issue attribute '#{attr}' on line #{index+1}")
+                end
+              else
+                raise ParseError.new("Unknown Issue attribute '#{attr}' on line #{index+1}")
+              end
+            else
+              raise ParseError.new("Unparseable stuff on line #{index+1}")
+            end
           end
         end
       end
@@ -407,7 +454,13 @@ EOT
 end
 
 if __FILE__ == $PROGRAM_NAME
-  cli = TacoCLI.new(Taco.new)
+  begin
+    cli = TacoCLI.new(Taco.new)
+  rescue TacoCLI::ParseError => e
+    puts e.to_s
+    exit 1
+  end
+  
   begin
     puts cli.execute! ARGV[0], *ARGV[1..-1]    
   rescue Exception => e
