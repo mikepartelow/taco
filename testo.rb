@@ -8,8 +8,8 @@ program :description, 'it has command lines'
  
 command :init do |c|
   c.syntax = 'testo init [options]'
-  c.summary = ''
-  c.description = ''
+  c.summary = 'SUMMARY'
+  c.description = 'DESCR'
   c.example 'description', 'command example'
   c.option '--some-switch', 'Some switch that does something'
   c.action do |args, options|

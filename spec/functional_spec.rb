@@ -63,13 +63,15 @@ describe "Command Line Interface" do
       FileUtils.rm_rf(taco.home)
       
       r, out = ex 'list'
-      r.should_not eq 0
+      r.should eq 0
       out.should =~ /Found no issues./
     end
   end
   
   describe "show" do    
     before { taco.init! ; taco.write! issues }
+    
+    it "has --- junk in the details. why?"
     
     it "displays an issue" do
       r, out = ex 'show %s' % issues[0].id
@@ -151,6 +153,8 @@ EOT
       attrs.each { |attr, value| issue.send(attr).should eq value }
     end
   
+    it "complains when passing too many arguments to new"
+  
     it "creates a new issue interactively" do
       r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_INPUT_PATH' => issue_path }
       r.should eq 0
@@ -211,6 +215,15 @@ EOT
           issue = taco.read(issue_id)
           issue.kind.should_not eq 'Whiffle'
         end
+        
+        it "handles whitespace" do
+          open(TACORC_PATH, 'w') { |f| f.write("\n\n\nDefaultKind = Whiffle") }
+          r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
+          issue_id = out.split("Created Issue ")[1]
+
+          issue = taco.read(issue_id)
+          issue.kind.should eq 'Whiffle'
+        end          
 
         it "handles gibberish" do
           open(TACORC_PATH, 'w') { |f| f.write("gibblegubble") }

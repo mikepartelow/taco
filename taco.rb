@@ -17,6 +17,10 @@ require 'time'
 #  - should taco config and issues go into different directories?
 #  - activities (or a better name): timestamped, attributed log of changes to an issue
 
+#  - don't bypass commander's exception handler, fix it and use it.
+#    - fix problems with commander and send patch to owner (clone to taco until gem suffices)
+#  - interactive_new can use say_editor
+
 class Issue  
   include Comparable
   
@@ -229,7 +233,7 @@ class Taco
   end 
   
   def init!
-    raise IOError.new("Could not create #{@home}, directory already exists.") if File.exists?(@home)
+    raise IOError.new("Could not create #{@home}\nDirectory already exists.") if File.exists?(@home)
 
     FileUtils.mkdir_p(@home)
   
@@ -314,7 +318,7 @@ DefaultKind = Defect
 EOT
 
   class ParseError < Exception; end
-
+  
   def initialize(taco=nil)
     @taco = taco || Taco.new
     
@@ -323,37 +327,38 @@ EOT
     
     Issue.set_allowed_values @config[:allowed]
   end
-    
-  def execute!(cmd, *args)
-    case cmd
-    when 'init'
-      out = @taco.init!
-      open(@rc_path, 'w') { |f| f.write(RC_TEXT) }
-      out + "\nPlease edit the config file at #{@rc_path}"
-    when 'list'
-      the_list = @taco.list(:short_ids => true).map { |issue, short_id| "#{short_id} : #{issue.summary}" }
-      raise Issue::NotFound.new("Found no issues.") unless the_list.size > 0
-      the_list.join("\n")
-    when 'show'
-      args.map { |id| @taco.read(id).to_s }.join("\n\n")        
-    when 'template'
-      Issue::TEMPLATE
-    when 'new'
-      if args.size > 0
-        the_template = open(args[0]) { |f| f.read }
-        issue = @taco.write!(Issue.from_template(the_template))
-        
-        "Created Issue #{issue.id}"
-      elsif args.size == 0
-        if issue = interactive_new!
-          "Created Issue #{issue.id}"
-        else
-          "Aborted."
-        end
-      end
-    end          
+  
+  def init!
+    out = @taco.init!
+    open(@rc_path, 'w') { |f| f.write(RC_TEXT) }
+    out + "\nPlease edit the config file at #{@rc_path}"
+  end
+
+  def list
+    the_list = @taco.list(:short_ids => true).map { |issue, short_id| "#{short_id} : #{issue.summary}" }
+    return "Found no issues." unless the_list.size > 0
+    the_list.join("\n")
   end
   
+  def new!(args)
+    if args.size > 0
+      the_template = open(args[0]) { |f| f.read }
+      issue = @taco.write!(Issue.from_template(the_template))
+      
+      "Created Issue #{issue.id}"
+    elsif args.size == 0
+      if issue = interactive_new!
+        "Created Issue #{issue.id}"
+      else
+        "Aborted."
+      end
+    end
+  end
+  
+  def show(args)
+    args.map { |id| @taco.read(id).to_s }.join("\n\n")        
+  end
+      
   private  
     def interactive_new!    
       raise ArgumentError.new("Please define $EDITOR in your environment.") unless ENV['EDITOR']
@@ -415,7 +420,7 @@ EOT
       if File.exist? @rc_path
         open(@rc_path) do |f|
           f.readlines.each_with_index do |line, index|
-            next if line =~ /^#/
+            next if line =~ /^#/ || line =~ /^\s*$/            
             
             if line =~ /^Default(\w+)\s+=\s+(\w+)/
               attr, value = $1.strip.downcase.to_sym, $2.strip
@@ -439,16 +444,74 @@ if __FILE__ == $PROGRAM_NAME
   begin
     cli = TacoCLI.new(Taco.new)
   rescue TacoCLI::ParseError => e
-    puts e.to_s
+    puts "Parse error while reading .tacorc: #{e}"
     exit 1
   end
+
+  require 'commander/import'
   
-  begin
-    puts cli.execute! ARGV[0], *ARGV[1..-1]    
-  rescue Exception => e
-    puts e.to_s
-    exit 1
+  program :name, 'taco'
+  program :version, '0.9.0'
+  program :description, 'simple command line issue tracking'
+
+  command :init do |c|
+    c.syntax = 'taco init'
+    c.summary = 'initialize a taco repo in the current directory'
+    c.description = 'Initialize a taco Issue repository in the current working directory'
+    c.action do |args, options|
+      begin
+        puts cli.init!
+      rescue Exception => e
+        puts "Error: #{e}"
+        exit 1
+      end
+    end
+  end
+
+  command :list do |c|
+    c.syntax = 'taco list'
+    c.summary = 'list all issues in the repository'
+    c.description = 'List all taco Issues in the current repository'
+    c.action do |args, options|
+      begin
+        puts cli.list
+      rescue Exception => e
+        puts "Error: #{e}"
+        exit 1
+      end
+    end
+  end
+    
+  command :new do |c|
+    c.syntax = 'taco new [path_to_issue_template]'
+    c.summary = 'create a new issue'
+    c.description = "Create a new issue, interactively or from a template file.\n    Interactive mode launches $EDITOR with an Issue template."
+    c.example 'interactive issue creation', 'taco new'
+    c.example 'issue creation from a file', 'taco new /path/to/template'    
+    c.action do |args, options|
+      begin
+        puts cli.new! args
+      rescue Exception => e
+        puts "Error: #{e}"
+        exit 1
+      end
+    end  
   end
   
-  exit 0
+  command :show do |c|
+    c.syntax = 'taco show <issue id0..issue idN>'
+    c.summary = 'display details for one or more issues'
+    c.description = 'Display details for one or more issues'
+    c.example 'show issue by id', 'taco show 9f9c52ce1ced4ace878155c3a98cced0'
+    c.example 'show issue by unique id fragment', 'taco show ce1ced'
+    c.action do |args, options|
+      begin
+        puts cli.show args
+      rescue Exception => e
+        puts "Error: #{e}"
+        exit 1
+      end
+    end  
+  end
+  
 end
