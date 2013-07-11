@@ -6,10 +6,14 @@ TMP_PATH = File.realdirpath "./spec/tmp"
 TACORC_PATH = File.join(TMP_PATH, '.taco', '.tacorc')
 EDITOR_PATH = File.realdirpath "./spec/editor.rb"
 
-def ex(args, opts={:env => {}})
+def ex(args, opts={:env => {}, :stderr => false})
+  opts[:env] ||= {}
+  opts[:stderr] ||= false
+  
   r, w = IO.pipe
 
   cmd = "cd #{TMP_PATH} && #{TACO_PATH} #{args}"
+  cmd += " 2>&1" if opts[:stderr]
 
   Process.wait(Process.spawn(opts[:env], cmd, :out => w))
   w.close
@@ -20,6 +24,8 @@ end
 describe "Command Line Interface" do
   let(:taco) { Taco.new TMP_PATH }
   let(:issues) { FactoryGirl.build_list(:issue, 100) }
+  let(:attrs) { FactoryGirl.attributes_for(:issue) }
+  let(:issue_path) { File.realdirpath 'spec/tmp/issue' }
   
   before do 
     FileUtils.rm_rf(TMP_PATH)
@@ -40,14 +46,23 @@ describe "Command Line Interface" do
     end
     
     it "initializes non-CWD directory via env var" #v2.0
+    
+    it "displays an error for wrong number of arguments"
+    
   end
   
   describe "help" do
-    it "shows help when no arguments are given"
+    it "shows help when no arguments are given" do
+      r, out = ex '', :stderr => true
+      r.should_not eq 0
+      out.should include '--help'
+    end
   end
   
   describe "list" do   
     before { taco.init! ; taco.write! issues }
+    
+    it "displays an error for wrong number of arguments"    
     
     it "lists issues" do
       r, out = ex 'list'
@@ -70,9 +85,9 @@ describe "Command Line Interface" do
   
   describe "show" do    
     before { taco.init! ; taco.write! issues }
-    
-    it "has --- junk in the details. why?"
-    
+        
+    it "displays an error for wrong number of arguments"
+        
     it "displays an issue" do
       r, out = ex 'show %s' % issues[0].id
       r.should eq 0
@@ -127,8 +142,6 @@ Kind      : %{kind}
 %{description}
 EOT
   }  
-    let(:attrs) { FactoryGirl.attributes_for(:issue) }
-    let(:issue_path) { File.realdirpath 'spec/tmp/issue' }
 
     before do
       taco.init!
@@ -138,6 +151,8 @@ EOT
     end
     
     after { File.unlink(issue_path) rescue nil }
+    
+    it "displays an error for wrong number of arguments"
     
     it "creates a new issue from a file" do    
       issues_before = taco.list
@@ -322,7 +337,31 @@ EOT
   end
   
   describe "edit" do
-    it "edits an existing issue"
+    before { taco.init! ; taco.write! issues }
+    
+    it "edits an existing issue" do
+      issue = taco.read issues[0].id
+      
+      r, out = ex 'edit', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
+      r.should eq 0
+      out.should include "Updated Issue "
+      
+      issue_id = out.split("Updated Issue ")[1]
+      
+      issue_id.should eq issue.id
+    
+      reissue = taco.read(issue_id)
+      reissue.summary.should eq issue.summary
+      reissue.description.should include 'this is edited sparta!'
+    end
+    
+    it "does nothing if edit is aborted"
+    
+    it "does not set any defaults when editing"
+    it "does not automatically change created_at when editing"
+    it "does not allow changing created_at when editing"
+    it "sets updated_at"
+    it "displays an error for wrong number of arguments"
   end
   
   describe "comment" do

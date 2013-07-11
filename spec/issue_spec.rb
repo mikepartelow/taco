@@ -2,7 +2,10 @@ require 'taco'
 require 'json'
 
 describe Issue do
-  let(:valid_attributes) { { :summary => 'a summary', :kind => 'Defect', :created_at => Time.new(2007, 5, 23, 5, 8, 23, '-07:00'), 
+  let(:valid_attributes) { { :id => 'abc123', 
+                             :created_at => Time.new(2007, 5, 23, 5, 8, 23, '-07:00'), 
+                             :summary => 'a summary', 
+                             :kind => 'Defect', 
                              :description => "a description\nin two lines", } }
   let(:issue) { Issue.new valid_attributes }
   let(:template) { <<-EOT
@@ -19,6 +22,7 @@ EOT
   
     it { should respond_to :to_s }
     it { should respond_to :valid? }
+    it { should respond_to :new? }
     
     it { should respond_to :summary }
     it { should respond_to :kind }
@@ -31,6 +35,8 @@ EOT
     it { should_not respond_to(:id=) }
   
     it { should respond_to :to_json }
+    
+    it { should respond_to :to_template }
   
     it { should respond_to :summary= }
     it { should respond_to :kind= }
@@ -41,6 +47,11 @@ EOT
   
   describe "class members" do
     specify { Issue.should respond_to :from_json }    
+  end
+  
+  describe "new?" do
+    specify { Issue.new.should be_new }
+    specify { Issue.new(valid_attributes).should_not be_new }
   end
   
   describe "validation" do    
@@ -250,10 +261,40 @@ ID          : #{issue.id}
 Created At  : #{issue.created_at}
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
----
 #{issue.description}      
 EOT
       issue.to_s.should eq text
+    end
+  end
+  
+  describe "to_template" do
+    it "should render a 'new issue' template when the issue is new" do
+      new_issue_template = <<-EOT.strip
+# New Issue
+#
+# Lines beginning with # will be ignored.
+Summary     : %{summary}
+Kind        : %{kind}
+# Everything past this line is Issue Description
+%{description}
+EOT
+      Issue.new.to_template.should eq new_issue_template
+    end
+    
+    it "should render an 'edit issue' template when the issue is not new" do
+      edit_issue_template = <<-EOT.strip
+# Edit Issue
+#
+# ID          : #{issue.id}
+# Created At  : #{issue.created_at}
+#
+# Lines beginning with # will be ignored.
+Summary     : %{summary}
+Kind        : %{kind}
+# Everything past this line is Issue Description
+%{description}
+EOT
+      issue.to_template.should eq edit_issue_template
     end
   end
   

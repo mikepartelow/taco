@@ -17,25 +17,31 @@ require 'time'
 #  - should taco config and issues go into different directories?
 #  - activities (or a better name): timestamped, attributed log of changes to an issue
 
+#  - fully interactive mode (shell)
+
 #  - don't bypass commander's exception handler, fix it and use it.
 #    - fix problems with commander and send patch to owner (clone to taco until gem suffices)
 #  - interactive_new can use say_editor
+
+#  - dsl for attributes: attr :id, :class => String, :required => true, :settable => false
+#                        => creates setter/getter and validators
+#                        perhaps a different dsl for taco vs user attrs: id vs kind
 
 class Issue  
   include Comparable
   
   SCHEMA_ATTRIBUTES = {
     :id             => { :class => String,    :required => true,   :settable => false },
+    :created_at     => { :class => Time,      :required => true,   :settable => false },
+    
     :summary        => { :class => String,    :required => true,   :settable => true },
     :kind           => { :class => String,    :required => true,   :settable => true },
     :description    => { :class => String,    :required => true,   :settable => true },
-    :created_at     => { :class => Time,      :required => true,   :settable => false },
   }
   TEMPLATE =<<-EOT.strip
 # Lines beginning with # will be ignored.
 Summary     : %{summary}
 Kind        : %{kind}
----
 # Everything past this line is Issue Description
 %{description}
 EOT
@@ -45,12 +51,19 @@ EOT
   
   def initialize(issue={})
     @issue = Hash[issue.map { |k, v| [ k.to_sym, v ] }]
+    
+    @new = @issue[:created_at].nil? && @issue[:id].nil?
+    
     @issue[:created_at] = Time.now unless @issue.include?(:created_at) # intentionally not using ||=
     @issue[:id] = SecureRandom.uuid.gsub('-', '') unless @issue.include?(:id) # intentionally not using ||=
     
     @issue = Issue::validate_attributes @issue
     
     self
+  end
+  
+  def new?
+    @new
   end
   
   def self.set_allowed_values(attrs)
@@ -140,7 +153,9 @@ EOT
     super
   end
   
-  def to_s    
+  def to_s
+    # FIXME: this should not use TEMPLATE.
+    #    
     header =<<-EOT.strip
 ID          : #{id}
 Created At  : #{created_at}
@@ -155,6 +170,21 @@ EOT
   def to_json
     valid? :raise => true
     JSON.pretty_generate(@issue)
+  end
+  
+  def to_template
+    if new?
+      header = "# New Issue\n#"
+    else
+      header =<<-EOT.strip
+# Edit Issue
+#
+# ID          : #{id}
+# Created At  : #{created_at}
+#
+EOT
+    end
+    header + "\n" + TEMPLATE
   end
   
   def self.from_json(the_json)
@@ -347,7 +377,7 @@ EOT
       
       "Created Issue #{issue.id}"
     elsif args.size == 0
-      if issue = interactive_new!
+      if issue = interactive_edit!
         "Created Issue #{issue.id}"
       else
         "Aborted."
@@ -358,12 +388,23 @@ EOT
   def show(args)
     args.map { |id| @taco.read(id).to_s }.join("\n\n")        
   end
+  
+  def edit!(args)
+    if args.size == 0
+      issue = @taco.read args[0]
+      if issue = interactive_edit!(issue)
+        "Updated Issue #{issue.id}"
+      else
+        "Aborted."
+      end
+    end
+  end
       
   private  
-    def interactive_new!    
+    def interactive_edit!(issue=Issue.new)    
       raise ArgumentError.new("Please define $EDITOR in your environment.") unless ENV['EDITOR']
     
-      template = format_template(Issue::TEMPLATE)
+      template = format_template(issue.to_template)
       issue = nil      
     
       file = Tempfile.new('taco')    
@@ -504,6 +545,7 @@ if __FILE__ == $PROGRAM_NAME
     c.description = 'Display details for one or more issues'
     c.example 'show issue by id', 'taco show 9f9c52ce1ced4ace878155c3a98cced0'
     c.example 'show issue by unique id fragment', 'taco show ce1ced'
+    c.example 'show two issues by unique id fragment', 'taco show ce1ced bc2de4'
     c.action do |args, options|
       begin
         puts cli.show args
@@ -513,5 +555,20 @@ if __FILE__ == $PROGRAM_NAME
       end
     end  
   end
+
+  command :edit do |c|
+    c.syntax = 'taco edit <issue_id>'
+    c.summary = 'edit an issue'
+    c.description = 'Edit details for an issue'
+    c.action do |args, options|
+      begin
+        puts cli.edit! args
+      rescue Exception => e
+        puts "Error: #{e}"
+        exit 1
+      end
+    end  
+  end
+
   
 end
