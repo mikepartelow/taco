@@ -15,7 +15,7 @@ else
     end
   end.join("\n")
 
-  unless appended_text = env['EDITOR_APPEND']
+  unless appended_text = ENV['EDITOR_APPEND']
     appended_text = "\nappended text!"
   end
   

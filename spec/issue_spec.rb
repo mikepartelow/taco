@@ -132,7 +132,7 @@ EOT
         issue = Issue.from_template(text)
         issue.should be_valid
       
-        valid_attributes.reject { |attr, value| attr == :created_at }.each { |attr, value| issue.send(attr).should eq value }      
+        valid_attributes.reject { |attr, value| [ :id, :created_at ].include? attr }.each { |attr, value| issue.send(attr).should eq value }      
       end
     
       it "should raise ArgumentError on unrecognized key/value pairs" do
@@ -301,16 +301,18 @@ EOT
   describe "comparable" do
     it "implements comparable such that issues are sortable by ascending created_at,id" do
       issue.should eq issue.dup
+      attrs = valid_attributes.dup
+      attrs.delete :id
       
-      issue.should_not eq Issue.new(valid_attributes) # because they have different ids
+      issue.should_not eq Issue.new(attrs) # because they have different ids
       
-      later   = valid_attributes[:created_at] + 100
-      earlier = valid_attributes[:created_at] - 100
+      later   = attrs[:created_at] + 100
+      earlier = attrs[:created_at] - 100
       
-      issue.should be < Issue.new(valid_attributes.merge({:created_at => later}))
-      issue.should be > Issue.new(valid_attributes.merge({:created_at => earlier}))
+      issue.should be < Issue.new(attrs.merge({:created_at => later}))
+      issue.should be > Issue.new(attrs.merge({:created_at => earlier}))
       
-      issues = (0...100).map { Issue.new(valid_attributes) }
+      issues = (0...100).map { Issue.new(attrs) }
       issues[0].id.should_not eq issues[1].id
       issues.sort.should_not eq issues.shuffle
       issues.sort.should eq issues.sort_by(&:id)
