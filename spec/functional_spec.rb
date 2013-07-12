@@ -108,12 +108,13 @@ describe "Command Line Interface" do
       out.should =~ /ID\s+:\s+#{issues[0].id}/
     end
 
-    it "shows created_at" do
+    it "shows timestamps" do
       r, out = ex 'show %s' % issues[0].id
       r.should eq 0
       out.should =~ /Created At\s+:\s+#{issues[0].created_at}/
+      out.should =~ /Updated At\s+:\s+#{issues[0].updated_at}/
     end
-    
+        
     it "does not display template comments" do
       r, out = ex 'show %s' % issues[0].id
       r.should eq 0
@@ -363,12 +364,11 @@ EOT
       reissue = taco.read(issues[0].id)
       reissue.should eq issue
     end
-    
-    it "does not set any defaults when editing"
-    
-    it "does not automatically change created_at when editing" do
+        
+    it "manages timestamps when editing" do
       issue = taco.read issues[0].id
       old_created_at = issue.created_at
+      old_updated_at = issue.updated_at
       
       r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
       r.should eq 0
@@ -376,10 +376,9 @@ EOT
             
       reissue = taco.read(issues[0].id)
       reissue.created_at.should eq old_created_at
+      reissue.updated_at.should_not eq old_updated_at
     end
-    
-    it "does not allow changing created_at when editing"
-    it "sets updated_at" # check for this in creation specs, too
+        
     it "displays an error for wrong number of arguments"
   end
   

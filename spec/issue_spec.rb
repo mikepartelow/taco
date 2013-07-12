@@ -4,6 +4,7 @@ require 'json'
 describe Issue do
   let(:valid_attributes) { { :id => 'abc123', 
                              :created_at => Time.new(2007, 5, 23, 5, 8, 23, '-07:00'), 
+                             :updated_at => Time.new(2007, 5, 23, 5, 8, 23, '-07:00'), 
                              :summary => 'a summary', 
                              :kind => 'Defect', 
                              :description => "a description\nin two lines", } }
@@ -26,8 +27,12 @@ EOT
     
     it { should respond_to :summary }
     it { should respond_to :kind }
+
     it { should respond_to :created_at }
     it { should_not respond_to :created_at= }
+
+    it { should respond_to :updated_at }
+    it { should_not respond_to :updated_at= }
 
     it { should respond_to :description }
   
@@ -132,7 +137,7 @@ EOT
         issue = Issue.from_template(text)
         issue.should be_valid
       
-        valid_attributes.reject { |attr, value| [ :id, :created_at ].include? attr }.each { |attr, value| issue.send(attr).should eq value }      
+        valid_attributes.reject { |attr, value| [ :id, :created_at, :updated_at ].include? attr }.each { |attr, value| issue.send(attr).should eq value }      
       end
     
       it "should raise ArgumentError on unrecognized key/value pairs" do
@@ -147,6 +152,11 @@ EOT
       
       it "should raise ArgumentError when attempting to set created_at" do
         text = "created_at : 123abc\n" + (template % valid_attributes)        
+        expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
+      end
+
+      it "should raise ArgumentError when attempting to set updated_at" do
+        text = "updated_at : 123abc\n" + (template % valid_attributes)        
         expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
       end
       
@@ -164,6 +174,7 @@ EOT
         issue.summary.should eq 'different summary'
         issue.description.should eq 'different descr'
         issue.kind.should eq old_kind        
+        issue.updated_at.should_not eq issue.created_at
       end
     end
       
@@ -187,6 +198,10 @@ EOT
     
     it "sets created_at if not given" do
       Issue.new.created_at.should be_within(2).of(Time.now)
+    end
+
+    it "sets updated_at if not given" do
+      Issue.new.updated_at.should be_within(2).of(Time.now)
     end
     
     it "does not overwrite given created_at" do
@@ -219,6 +234,7 @@ EOT
       specify { issue.summary.should eq valid_attributes[:summary] }
       specify { issue.kind.should eq valid_attributes[:kind] }
       specify { issue.created_at.should eq valid_attributes[:created_at] }
+      specify { issue.updated_at.should eq valid_attributes[:updated_at] }
       specify { issue.description.should eq valid_attributes[:description] }
     end
     
@@ -240,13 +256,20 @@ EOT
         issue1 = Issue.new valid_attributes.merge({ :created_at => t1 })
         
         issue0.created_at.should eq issue1.created_at
+      end      
+    end
+    
+    describe "updated_at" do
+      it "automatically sets updated_at when creating a new issue" do
+        Issue.new.created_at.should_not be_nil
       end
       
-      it "should not allow assignment" do
-        expect {
-          issue.created_at = Time.now
-        }.to raise_error(NoMethodError)
-      end
+      it "automatically sets updated_at when setting an attribute" do
+        old_updated_at = issue.updated_at
+        issue.summary = "foo bar"
+        issue.updated_at.should_not eq old_updated_at
+        issue.updated_at.should be_within(2).of(Time.now)
+      end        
     end
     
     describe "assignment" do

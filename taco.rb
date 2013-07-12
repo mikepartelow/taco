@@ -27,12 +27,21 @@ require 'time'
 #                        => creates setter/getter and validators
 #                        perhaps a different dsl for taco vs user attrs: id vs kind
 
+#  PATH TO 1.0
+#  ---
+#
+#  - status
+#  - owner
+#  - comments
+#  - changelog
+
 class Issue  
   include Comparable
   
   SCHEMA_ATTRIBUTES = {
     :id             => { :class => String,    :required => true,   :settable => false },
     :created_at     => { :class => Time,      :required => true,   :settable => false },
+    :updated_at     => { :class => Time,      :required => true,   :settable => false },
     
     :summary        => { :class => String,    :required => true,   :settable => true },
     :kind           => { :class => String,    :required => true,   :settable => true },
@@ -55,6 +64,7 @@ EOT
     @new = @issue[:created_at].nil? && @issue[:id].nil?
     
     @issue[:created_at] = Time.now unless @issue.include?(:created_at) # intentionally not using ||=
+    @issue[:updated_at] = Time.now unless @issue.include?(:updated_at) # intentionally not using ||=
     @issue[:id] = SecureRandom.uuid.gsub('-', '') unless @issue.include?(:id) # intentionally not using ||=
     
     @issue = Issue::validate_attributes @issue
@@ -108,7 +118,7 @@ EOT
         attrs[attr] && attrs[attr].strip!
       end
     end 
-    
+        
     attrs   
   end
   
@@ -134,6 +144,7 @@ EOT
       if method_str[-1] == '='
         raise NoMethodError unless data[:settable]
         @issue = Issue::validate_attributes(@issue.merge( { attr => args.first } ) )
+        @issue[:updated_at] = Time.now        
       else
         @issue[attr]
       end
@@ -232,6 +243,9 @@ EOT
     end
 
     @issue = Issue::validate_attributes(Hash[attrs])
+    @issue[:updated_at] = Time.now
+    
+    self
   end
   
   def valid?(opts={})
