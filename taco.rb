@@ -175,6 +175,7 @@ EOT
   def to_template
     if new?
       header = "# New Issue\n#"
+      body = TEMPLATE
     else
       header =<<-EOT.strip
 # Edit Issue
@@ -183,8 +184,9 @@ EOT
 # Created At  : #{created_at}
 #
 EOT
+      body = TEMPLATE % @issue
     end
-    header + "\n" + TEMPLATE
+    header + "\n" + body
   end
   
   def self.from_json(the_json)
@@ -216,6 +218,20 @@ EOT
     end
     
     Issue.new(issue)
+  end
+  
+  def update_from_template!(text)
+    new_issue = Issue.from_template(text)
+    
+    attrs = SCHEMA_ATTRIBUTES.map do |attr, data|
+      if data[:settable]
+        [ attr, new_issue.send(attr) ]
+      else
+        [ attr, @issue[attr] ]
+      end
+    end
+
+    @issue = Issue::validate_attributes(Hash[attrs])
   end
   
   def valid?(opts={})
@@ -330,8 +346,6 @@ class Taco
       end
     end.sort_by { |thing| opts[:short_ids] ? thing[0] : thing}
   end
-  
-  
 end
 
 class TacoCLI
@@ -390,7 +404,7 @@ EOT
   end
   
   def edit!(args)
-    if args.size == 0
+    if args.size == 1
       issue = @taco.read args[0]
       if issue = interactive_edit!(issue)
         "Updated Issue #{issue.id}"
@@ -403,10 +417,10 @@ EOT
   private  
     def interactive_edit!(issue=Issue.new)    
       raise ArgumentError.new("Please define $EDITOR in your environment.") unless ENV['EDITOR']
-    
+
       template = format_template(issue.to_template)
-      issue = nil      
-    
+      new_issue = nil      
+
       file = Tempfile.new('taco')    
       begin
         path = file.path
@@ -422,17 +436,23 @@ EOT
           open(path) do |f| 
             text = f.read
             raise Errno::ENOENT if text == template
-            issue = Issue.from_template(text)
+            
+            if issue.new?
+              new_issue = Issue.from_template(text)
+            else
+              issue.update_from_template!(text)
+              new_issue = issue
+            end
           end      
         rescue Errno::ENOENT
-          issue = nil
+          new_issue = nil
         end
       ensure
         File.unlink(path) rescue nil
       end
 
-      if issue
-        @taco.write! issue
+      if new_issue
+        @taco.write! new_issue
       else
         nil
       end

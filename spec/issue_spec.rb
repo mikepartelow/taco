@@ -37,7 +37,7 @@ EOT
     it { should respond_to :to_json }
     
     it { should respond_to :to_template }
-  
+    it { should respond_to :update_from_template! }
     it { should respond_to :summary= }
     it { should respond_to :kind= }
     it { should respond_to :description= }
@@ -148,6 +148,22 @@ EOT
       it "should raise ArgumentError when attempting to set created_at" do
         text = "created_at : 123abc\n" + (template % valid_attributes)        
         expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
+      end
+      
+      it "should update from a template" do
+        reissue = Issue.new(valid_attributes.merge({:summary => 'different summary', :description => 'different descr'}))
+        
+        old_id = issue.id
+        old_created_at = issue.created_at
+        old_kind = issue.kind
+        
+        issue.update_from_template! reissue.to_template
+        
+        issue.id.should eq old_id
+        issue.created_at.should eq old_created_at
+        issue.summary.should eq 'different summary'
+        issue.description.should eq 'different descr'
+        issue.kind.should eq old_kind        
       end
     end
       
@@ -289,10 +305,10 @@ EOT
 # Created At  : #{issue.created_at}
 #
 # Lines beginning with # will be ignored.
-Summary     : %{summary}
-Kind        : %{kind}
+Summary     : #{issue.summary}
+Kind        : #{issue.kind}
 # Everything past this line is Issue Description
-%{description}
+#{issue.description}
 EOT
       issue.to_template.should eq edit_issue_template
     end

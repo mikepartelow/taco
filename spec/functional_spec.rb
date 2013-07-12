@@ -330,9 +330,11 @@ EOT
     end
     
     it "does something nice when aborting new issue creation" do
+      count = taco.list.size
       r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_ABORT' => 'yes' }
       r.should eq 0
       out.should include 'Aborted.'
+      taco.list.size.should eq count
     end
   end
   
@@ -342,25 +344,42 @@ EOT
     it "edits an existing issue" do
       issue = taco.read issues[0].id
       
-      r, out = ex 'edit', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
+      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
       r.should eq 0
-      out.should include "Updated Issue "
-      
-      issue_id = out.split("Updated Issue ")[1]
-      
-      issue_id.should eq issue.id
-    
-      reissue = taco.read(issue_id)
+      out.should eq "Updated Issue #{issues[0].id}"
+            
+      reissue = taco.read(issues[0].id)
       reissue.summary.should eq issue.summary
       reissue.description.should include 'this is edited sparta!'
     end
     
-    it "does nothing if edit is aborted"
+    it "does nothing if edit is aborted" do
+      issue = taco.read issues[0].id
+      
+      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_ABORT' => "yes" }
+      r.should eq 0
+      out.should eq "Aborted."
+            
+      reissue = taco.read(issues[0].id)
+      reissue.should eq issue
+    end
     
     it "does not set any defaults when editing"
-    it "does not automatically change created_at when editing"
+    
+    it "does not automatically change created_at when editing" do
+      issue = taco.read issues[0].id
+      old_created_at = issue.created_at
+      
+      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
+      r.should eq 0
+      out.should eq "Updated Issue #{issues[0].id}"
+            
+      reissue = taco.read(issues[0].id)
+      reissue.created_at.should eq old_created_at
+    end
+    
     it "does not allow changing created_at when editing"
-    it "sets updated_at"
+    it "sets updated_at" # check for this in creation specs, too
     it "displays an error for wrong number of arguments"
   end
   
