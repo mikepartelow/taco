@@ -170,6 +170,7 @@ EOT
     header =<<-EOT.strip
 ID          : #{id}
 Created At  : #{created_at}
+Updated At  : #{updated_at}
 EOT
     
     body = TEMPLATE % @issue
@@ -193,6 +194,7 @@ EOT
 #
 # ID          : #{id}
 # Created At  : #{created_at}
+# Updated At  : #{updated_at}
 #
 EOT
       body = TEMPLATE % @issue

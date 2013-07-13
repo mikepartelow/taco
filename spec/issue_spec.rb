@@ -298,6 +298,7 @@ EOT
       text = <<-EOT.strip
 ID          : #{issue.id}
 Created At  : #{issue.created_at}
+Updated At  : #{issue.updated_at}
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
 #{issue.description}      
@@ -326,6 +327,7 @@ EOT
 #
 # ID          : #{issue.id}
 # Created At  : #{issue.created_at}
+# Updated At  : #{issue.updated_at}
 #
 # Lines beginning with # will be ignored.
 Summary     : #{issue.summary}
