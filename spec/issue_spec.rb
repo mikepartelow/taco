@@ -7,16 +7,11 @@ describe Issue do
                              :updated_at => Time.new(2007, 5, 23, 5, 8, 23, '-07:00'), 
                              :summary => 'a summary', 
                              :kind => 'Defect', 
+                             :status => 'Open',
+                             :owner => 'bobdole',
                              :description => "a description\nin two lines", } }
   let(:issue) { Issue.new valid_attributes }
-  let(:template) { <<-EOT
-# Lines beginning with # will be ignored.
-Summary   : %{summary}
-Kind      : %{kind}
-# Everything past this line is Issue Description
-%{description}
-EOT
-  }  
+  let(:template) { Issue::TEMPLATE }  
 
   describe "methods" do
     subject { issue }
@@ -27,6 +22,8 @@ EOT
     
     it { should respond_to :summary }
     it { should respond_to :kind }
+    it { should respond_to :status }
+    it { should respond_to :owner }
 
     it { should respond_to :created_at }
     it { should_not respond_to :created_at= }
@@ -45,6 +42,9 @@ EOT
     it { should respond_to :update_from_template! }
     it { should respond_to :summary= }
     it { should respond_to :kind= }
+    it { should respond_to :status= }
+    it { should respond_to :owner= }
+
     it { should respond_to :description= }
     
     it { should be_valid }
@@ -302,6 +302,9 @@ Updated At  : #{issue.updated_at}
 
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
+Status      : #{issue.status}
+Owner       : #{issue.owner}
+
 ---
 #{issue.description}      
 EOT
@@ -317,6 +320,8 @@ EOT
 # Lines beginning with # will be ignored.
 Summary     : %{summary}
 Kind        : %{kind}
+Status      : %{status}
+Owner       : %{owner}
 # Everything past this line is Issue Description
 %{description}
 EOT
@@ -334,6 +339,8 @@ EOT
 # Lines beginning with # will be ignored.
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
+Status      : #{issue.status}
+Owner       : #{issue.owner}
 # Everything past this line is Issue Description
 #{issue.description}
 EOT

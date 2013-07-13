@@ -139,6 +139,8 @@ describe "Command Line Interface" do
 # Lines beginning with # will be ignored.
 Summary   : %{summary}
 Kind      : %{kind}
+Status    : %{status}
+Owner     : %{owner}
 # Everything past this line is Issue Description
 %{description}
 EOT
@@ -301,7 +303,7 @@ EOT
         end
       
         it "doesn't allow empty required fields" do
-          issue_text = "Summary:\nKind: KindNumber2\nsome description"
+          issue_text = "Summary:\nKind: KindNumber2\nStatus: Open\nOwner: bobdole\nsome description"
           open(issue_path, 'w') { |f| f.write(issue_text) }
 
           r, out = ex 'new %s' % issue_path

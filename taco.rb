@@ -26,8 +26,6 @@ require 'time'
 #  PATH TO 1.0
 #  ---
 #
-#  - status
-#  - owner
 #  - comments
 #  - changelog
 
@@ -35,18 +33,23 @@ class Issue
   include Comparable
   
   SCHEMA_ATTRIBUTES = {
-    :id             => { :class => String,    :required => true,   :settable => false },
-    :created_at     => { :class => Time,      :required => true,   :settable => false },
-    :updated_at     => { :class => Time,      :required => true,   :settable => false },
+    :id             => { :class => String,    :required => true,    :settable => false },
+    :created_at     => { :class => Time,      :required => true,    :settable => false },
+    :updated_at     => { :class => Time,      :required => true,    :settable => false },
     
-    :summary        => { :class => String,    :required => true,   :settable => true },
-    :kind           => { :class => String,    :required => true,   :settable => true },
-    :description    => { :class => String,    :required => true,   :settable => true },
+    :summary        => { :class => String,    :required => true,    :settable => true },
+    :kind           => { :class => String,    :required => true,    :settable => true },
+    :status         => { :class => String,    :required => true,    :settable => true },
+    :owner          => { :class => String,    :required => true,    :settable => true },
+    :description    => { :class => String,    :required => true,    :settable => true },
   }
+  
   TEMPLATE =<<-EOT.strip
 # Lines beginning with # will be ignored.
 Summary     : %{summary}
 Kind        : %{kind}
+Status      : %{status}
+Owner       : %{owner}
 # Everything past this line is Issue Description
 %{description}
 EOT
@@ -165,6 +168,9 @@ Updated At  : #{updated_at}
 
 Summary     : #{summary}
 Kind        : #{kind}
+Status      : #{status}
+Owner       : #{owner}
+
 ---
 #{description}
 EOT
@@ -361,12 +367,15 @@ class TacoCLI
   RC_TEXT =<<-EOT.strip
 # Empty lines and lines beginning with # will be ignored.
 #
-# A comma separated list of valid values for Issue.kind.
+# comma separated list of valid values for Issue fields
 #
 Kind = Defect, Feature Request
+Status = Open, Closed
 
-# Comment out to have no default.
+# Default values for Issue fields
+#
 DefaultKind = Defect
+DefaultStatus = Open
 EOT
 
   class ParseError < Exception; end
