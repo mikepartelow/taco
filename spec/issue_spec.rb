@@ -299,8 +299,10 @@ EOT
 ID          : #{issue.id}
 Created At  : #{issue.created_at}
 Updated At  : #{issue.updated_at}
+
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
+---
 #{issue.description}      
 EOT
       issue.to_s.should eq text

@@ -366,15 +366,17 @@ EOT
     end
         
     it "manages timestamps when editing" do
-      issue = taco.read issues[0].id
+      issue = Issue.new(FactoryGirl.attributes_for(:issue, :created_at => Time.now - 1000, :updated_at => Time.now - 1000))
+      taco.write! issue
+      
       old_created_at = issue.created_at
       old_updated_at = issue.updated_at
       
       r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
       r.should eq 0
-      out.should eq "Updated Issue #{issues[0].id}"
+      out.should eq "Updated Issue #{issue.id}"
             
-      reissue = taco.read(issues[0].id)
+      reissue = taco.read(issue.id)
       reissue.created_at.should eq old_created_at
       reissue.updated_at.should_not eq old_updated_at
     end

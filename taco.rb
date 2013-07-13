@@ -10,18 +10,14 @@ require 'time'
 # TODO:
 #  - store schema version in each issue
 #  - query by status
-#  - editing: full (editor) or quick (commandline updates, like new arguments)
 #  - arguments to 'new': taco new component:foo kind:bar summary:'ick thud wank'
 #  - simplified editing: taco edit 123abc summary:'change only this one field'
-#  - arg parsing: https://github.com/visionmedia/commander (check out their other stuff, too)
 #  - should taco config and issues go into different directories?
-#  - activities (or a better name): timestamped, attributed log of changes to an issue
 
 #  - fully interactive mode (shell)
 
 #  - don't bypass commander's exception handler, fix it and use it.
 #    - fix problems with commander and send patch to owner (clone to taco until gem suffices)
-#  - interactive_new can use say_editor
 
 #  - dsl for attributes: attr :id, :class => String, :required => true, :settable => false
 #                        => creates setter/getter and validators
@@ -67,7 +63,7 @@ EOT
     @issue[:updated_at] = Time.now unless @issue.include?(:updated_at) # intentionally not using ||=
     @issue[:id] = SecureRandom.uuid.gsub('-', '') unless @issue.include?(:id) # intentionally not using ||=
     
-    @issue = Issue::validate_attributes @issue
+    @issue = Issue::format_attributes @issue
     
     self
   end
@@ -84,10 +80,7 @@ EOT
     end
   end
   
-  # self.validate_attributes does known-attr checking, type checking, and value-massaging.
-  # FIXME: since we have a valid? function which actually does "Validation", this should be renamed.
-  #
-  def self.validate_attributes(issue_attrs)
+  def self.format_attributes(issue_attrs)
     attrs = issue_attrs.dup
     
     attrs.keys.each { |attr| raise ArgumentError.new("Unknown Issue attribute: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr }
@@ -143,7 +136,7 @@ EOT
     if data = SCHEMA_ATTRIBUTES[attr]
       if method_str[-1] == '='
         raise NoMethodError unless data[:settable]
-        @issue = Issue::validate_attributes(@issue.merge( { attr => args.first } ) )
+        @issue = Issue::format_attributes(@issue.merge( { attr => args.first } ) )
         @issue[:updated_at] = Time.now        
       else
         @issue[attr]
@@ -165,18 +158,17 @@ EOT
   end
   
   def to_s
-    # FIXME: this should not use TEMPLATE.
-    #    
-    header =<<-EOT.strip
+    <<-EOT.strip
 ID          : #{id}
 Created At  : #{created_at}
 Updated At  : #{updated_at}
+
+Summary     : #{summary}
+Kind        : #{kind}
+---
+#{description}
 EOT
     
-    body = TEMPLATE % @issue
-    body = body.lines.reject { |l| l.start_with?('#') }.join
-    
-    header + "\n" + body
   end
   
   def to_json
@@ -244,7 +236,7 @@ EOT
       end
     end
 
-    @issue = Issue::validate_attributes(Hash[attrs])
+    @issue = Issue::format_attributes(Hash[attrs])
     @issue[:updated_at] = Time.now
     
     self
@@ -443,8 +435,6 @@ EOT
         file.write(template)
         file.close
     
-        # FIXME: we should probably consult the exit code here
-        #
         cmd = "$EDITOR #{path}"
         system(cmd)
   
