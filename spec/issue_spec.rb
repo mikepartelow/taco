@@ -368,4 +368,11 @@ EOT
       issues.sort.should eq issues.sort_by(&:id)
     end
   end
+  
+  describe "changelog" do
+    it "exists even on a brand new Issue"
+    it "records attribute changes"
+    it "does not record changes to updated_at"
+    it "has a created_at timestamp for each entry"
+  end
 end

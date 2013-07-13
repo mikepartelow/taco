@@ -132,6 +132,8 @@ describe "Command Line Interface" do
       r.should_not eq 0
       out.should =~ /Found several matching issues/
     end
+    
+    it "shows the changelog" # possibly not by default, maybe require -v or -l
   end
   
   describe "new" do
@@ -383,6 +385,8 @@ EOT
       reissue.updated_at.should_not eq old_updated_at
     end
         
+    it "shows a commented changelog when editing"
+    
     it "displays an error for wrong number of arguments"
   end
   
@@ -390,7 +394,7 @@ EOT
     it "adds comments to an existing issue"
   end
   
-  describe "history" do
+  describe "changelog" do
     it "shows revision history for an issue"
   end
   

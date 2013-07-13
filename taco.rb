@@ -28,6 +28,7 @@ require 'time'
 #
 #  - comments
 #  - changelog
+#  - all non-v2.0 specs
 
 class Issue  
   include Comparable
@@ -605,5 +606,4 @@ if __FILE__ == $PROGRAM_NAME
     end  
   end
 
-  
 end
