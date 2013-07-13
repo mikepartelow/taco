@@ -14,8 +14,12 @@ else
       line = line
     end
   end.join("\n")
-      
-  text += "\nappended text!"
+
+  unless appended_text = ENV['EDITOR_APPEND']
+    appended_text = "\nappended text!"
+  end
+  
+  text += appended_text  
 end
 
 open(template_path, 'w') { |f| f.write(text) }
