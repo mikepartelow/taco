@@ -273,6 +273,13 @@ describe Issue do
         issue.updated_at.should_not eq old_updated_at
         issue.updated_at.should be_within(2).of(Time.now)
       end        
+      
+      it "does not have sub-second accuracy" do
+        old_updated_at = issue.updated_at
+        issue.summary = "foo bar"
+        issue.updated_at.subsec.should eq 0
+      end      
+      
     end
     
     describe "assignment" do

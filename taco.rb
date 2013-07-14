@@ -35,6 +35,17 @@ require 'time'
 #  - clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
 #     (or is that what Issue is supposed to be doing?)
 
+def timescrub(t)
+  # Time objects have sub-second precision.  Unfortunately, this precision is lost when we serialize.  What this means
+  # is that the following code will fail, most unexpectedly:
+  #
+  #  i0 = Issue.new some_attributes
+  #  i1 = Issue.from_json(i0.to_json)
+  #  i0.created_at == i1.created_at  # this will be false!
+  #      
+  Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset
+end
+
 class Issue  
   include Comparable
   
@@ -144,14 +155,7 @@ EOT
         end
         
         t = attrs[attr].is_a?(String) ? Time.parse(attrs[attr]) : attrs[attr]
-        # Time objects have sub-second precision.  Unfortunately, this precision is lost when we serialize.  What this means
-        # is that the following code will fail, most unexpectedly:
-        #
-        #  i0 = Issue.new some_attributes
-        #  i1 = Issue.from_json(i0.to_json)
-        #  i0.created_at == i1.created_at  # this will be false!
-        #      
-        attrs[attr] = Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset
+        attrs[attr] = timescrub(t)
       when 'String'
         unless attrs[attr].is_a?(String)
           raise ArgumentError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
@@ -198,7 +202,7 @@ EOT
       if method_str[-1] == '='
         raise NoMethodError unless data[:settable]
         self.issue = Issue::format_attributes(@issue.merge( { attr => args.first } ) )
-        @issue[:updated_at] = Time.now        
+        @issue[:updated_at] = timescrub Time.now        
       else
         @issue[attr]
       end
@@ -301,7 +305,7 @@ EOT
     end
 
     self.issue = Issue::format_attributes(Hash[attrs])
-    @issue[:updated_at] = Time.now
+    @issue[:updated_at] = timescrub Time.now
     
     self
   end
