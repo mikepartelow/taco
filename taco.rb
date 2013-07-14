@@ -23,15 +23,57 @@ require 'time'
 #                        => creates setter/getter and validators
 #                        perhaps a different dsl for taco vs user attrs: id vs kind
 
+#  - some way of constraining Change :attribute to Issue::SCHEMA_ATTRIBUTES
+#
+#
 #  PATH TO 1.0
 #  ---
 #
 #  - comments
 #  - changelog
 #  - all non-v2.0 specs
+#  - clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
+#     (or is that what Issue is supposed to be doing?)
 
 class Issue  
   include Comparable
+  
+  class Change
+    class Invalid < Exception; end
+    
+    attr_reader   :created_at
+    attr_accessor :attribute
+    attr_accessor :old_value
+    attr_accessor :new_value  
+    
+    def initialize(args={})
+      args.each do |attr, value|
+        raise ArgumentError.new("Unknown attribute #{attr}") unless self.respond_to?(attr)
+        instance_variable_set("@#{attr.to_s}", value)
+      end
+      
+      @created_at ||= Time.now
+    end  
+    
+    def valid?
+      # old_value is optional!
+      #
+      created_at && attribute && new_value
+    end
+    
+    def to_json
+      raise Invalid.new unless valid?
+      { :created_at => created_at, :attribute => attribute, :old_value => old_value, :new_value => new_value }.to_json
+    end
+    
+    def to_s(opts={})
+      if opts[:simple]
+        "#{attribute} : #{old_value} => #{new_value}"
+      end
+    end
+  end
+  
+  attr_reader :changelog
   
   SCHEMA_ATTRIBUTES = {
     :id             => { :class => String,    :required => true,    :settable => false },
@@ -59,15 +101,18 @@ EOT
   class NotFound < Exception; end
   
   def initialize(issue={})
-    @issue = Hash[issue.map { |k, v| [ k.to_sym, v ] }]
+    issue = Hash[issue.map { |k, v| [ k.to_sym, v ] }]
     
-    @new = @issue[:created_at].nil? && @issue[:id].nil?
+    @new = issue[:created_at].nil? && issue[:id].nil?      
     
-    @issue[:created_at] = Time.now unless @issue.include?(:created_at) # intentionally not using ||=
-    @issue[:updated_at] = Time.now unless @issue.include?(:updated_at) # intentionally not using ||=
-    @issue[:id] = SecureRandom.uuid.gsub('-', '') unless @issue.include?(:id) # intentionally not using ||=
+    issue[:created_at] = Time.now unless issue.include?(:created_at) # intentionally not using ||=
+    issue[:updated_at] = Time.now unless issue.include?(:updated_at) # intentionally not using ||=
+    issue[:id] = SecureRandom.uuid.gsub('-', '') unless issue.include?(:id) # intentionally not using ||=
+
+    @changelog = []
+    @issue = {}
     
-    @issue = Issue::format_attributes @issue
+    self.issue = Issue::format_attributes issue
     
     self
   end
@@ -120,9 +165,21 @@ EOT
   end
   
   def <=>(other)
-    return 0 if SCHEMA_ATTRIBUTES.all? { |attr, cfg| self.send(attr) == other.send(attr) }        
-    return self.id <=> other.id if self.created_at == other.created_at
-    return self.created_at <=> other.created_at
+    if SCHEMA_ATTRIBUTES.all? { |attr, cfg| self.send(attr) == other.send(attr) }
+      r = 0
+    else
+      if self.created_at == other.created_at
+        r = self.id <=> other.id
+      else
+        r = self.created_at <=> other.created_at
+      end
+
+      # this clause should not return 0, we've already established inequality
+      #      
+      r = -1 if r == 0
+    end
+    
+    r
   end
 
   def inspect
@@ -140,7 +197,7 @@ EOT
     if data = SCHEMA_ATTRIBUTES[attr]
       if method_str[-1] == '='
         raise NoMethodError unless data[:settable]
-        @issue = Issue::format_attributes(@issue.merge( { attr => args.first } ) )
+        self.issue = Issue::format_attributes(@issue.merge( { attr => args.first } ) )
         @issue[:updated_at] = Time.now        
       else
         @issue[attr]
@@ -243,7 +300,7 @@ EOT
       end
     end
 
-    @issue = Issue::format_attributes(Hash[attrs])
+    self.issue = Issue::format_attributes(Hash[attrs])
     @issue[:updated_at] = Time.now
     
     self
@@ -279,6 +336,17 @@ EOT
     
     true
   end
+  
+  private
+    def issue=(new_issue)
+      new_issue.each do |attr, value|        
+        if SCHEMA_ATTRIBUTES[attr][:settable] && @issue[attr] != new_issue[attr]
+          @changelog << Change.new(:attribute => attr, :old_value => @issue[attr], :new_value => new_issue[attr])
+        end
+      end
+      
+      @issue = new_issue
+    end
 end
 
 class Taco

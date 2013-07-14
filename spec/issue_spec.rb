@@ -47,6 +47,8 @@ describe Issue do
 
     it { should respond_to :description= }
     
+    it { should respond_to :changelog }
+    
     it { should be_valid }
   end
   
@@ -116,6 +118,7 @@ describe Issue do
     describe "json" do
       it "should serialize to json" do
         the_alleged_json = issue.to_json
+        the_alleged_json.should_not be_nil
         expect { JSON.parse(the_alleged_json) }.to_not raise_error(JSON::ParserError)
       end
         
@@ -367,12 +370,78 @@ EOT
       issues.sort.should_not eq issues.shuffle
       issues.sort.should eq issues.sort_by(&:id)
     end
+    
+    it "implements equality" do
+      reissue = issue.dup      
+      issue.should eq reissue
+    
+      reissue.summary = "this makes a change"      
+      issue.should_not eq reissue
+    end    
   end
   
   describe "changelog" do
-    it "exists even on a brand new Issue"
-    it "records attribute changes"
-    it "does not record changes to updated_at"
-    it "has a created_at timestamp for each entry"
+    it "is empty on an Issue with only unsettable attributes" do
+      issue = Issue.new
+      issue.changelog.should eq []      
+    end
+    
+    it "initializes the changelog from Issue::initialize" do
+      issue.changelog.size.should eq Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.size
+      Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.each do |attr, data|
+        issue.changelog.any? { |change| change.attribute == attr }.should be_true
+      end
+    end
+    
+    it "records attribute changes" do
+      old_summary = issue.summary
+      issue.summary = "summary is changed"
+      issue.changelog.size.should eq (1 + Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.size)
+      
+      issue.changelog[-1].created_at.should be_within(2).of(Time.now)
+      issue.changelog[-1].attribute.should eq :summary
+      issue.changelog[-1].old_value.should eq old_summary
+      issue.changelog[-1].new_value.should eq "summary is changed"
+    end
+
+    it "does not record changes to updated_at or created_at" do
+      issue.changelog.any? { |change| change.attribute == :created_at || change.attribute == :updated_at }.should be_false
+      issue.summary = "this should update updated_at"
+      issue.changelog.any? { |change| change.attribute == :created_at || change.attribute == :updated_at }.should be_false
+    end
+
+    it "has a created_at timestamp for each entry" do
+      issue.changelog.any? { |change| change.created_at.nil? }.should be_false
+    end
+    
+    it "is not relevant for issue comparisons" do
+      reissue = Issue.new(valid_attributes)
+      issue.should eq reissue
+      
+      reissue.summary = "this makes a change"      
+      issue.should_not eq reissue
+      reissue.changelog.size.should be > issue.changelog.size      
+      
+      reissue.summary = issue.summary      
+      reissue.changelog.size.should be > issue.changelog.size      
+
+      
+      # here we must really think about equlity (and modify specs to reflect this thinking if we really want the next to be true)
+      # 
+      # 1) are two Issues equal (by ==) if they have the same settable attributes but different read-only?
+      #     if the difference is id, they're definitely unequal
+      #     if the differences is created_at?
+      #     if the difference is updated_at?
+      #
+      # 2) if #1 is true, how do we sort?  seems easy enough, continue to sort by created_at,id
+      # 3) what does ActiveRecord do?
+      # 
+      issue.should eq reissue      
+    end      
+    
+    describe "serializatin" do
+      it "gets jsonified by Issue.to_json"
+      it "gets rubified by Issue.from_json"
+    end
   end
 end
