@@ -432,18 +432,11 @@ EOT
       reissue.summary = issue.summary      
       reissue.changelog.size.should be > issue.changelog.size      
 
-      
-      # here we must really think about equlity (and modify specs to reflect this thinking if we really want the next to be true)
-      # 
-      # 1) are two Issues equal (by ==) if they have the same settable attributes but different read-only?
-      #     if the difference is id, they're definitely unequal
-      #     if the differences is created_at?
-      #     if the difference is updated_at?
+      # the two issues are not "eq" because the timestamps differ
       #
-      # 2) if #1 is true, how do we sort?  seems easy enough, continue to sort by created_at,id
-      # 3) what does ActiveRecord do?
-      # 
-      issue.should eq reissue      
+      Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.each do |attr, data|
+        issue.send(attr).should eq reissue.send(attr)
+      end
     end      
     
     describe "serializatin" do
