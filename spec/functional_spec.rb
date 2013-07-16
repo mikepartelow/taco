@@ -111,8 +111,8 @@ describe "Command Line Interface" do
     it "shows timestamps" do
       r, out = ex 'show %s' % issues[0].id
       r.should eq 0
-      out.should =~ /Created At\s+:\s+#{issues[0].created_at}/
-      out.should =~ /Updated At\s+:\s+#{issues[0].updated_at}/
+      out.should =~ /Created At\s+:\s+#{date(issues[0].created_at)}/
+      out.should =~ /Updated At\s+:\s+#{date(issues[0].updated_at)}/
     end
         
     it "does not display template comments" do
@@ -395,7 +395,13 @@ EOT
   end
   
   describe "changelog" do
-    it "shows revision history for an issue"
+    before { taco.init! ; taco.write! issues }
+    
+    it "shows revision history for an issue when given the -c commandline switch" do
+      r, out = ex 'show -c %s' % issues[0].id
+      r.should eq 0
+      out.should eq issues[0].to_s(:changelog => true)
+    end    
   end
   
   describe "template" do

@@ -30,7 +30,6 @@ require 'time'
 #  ---
 #
 #  - comments
-#  - changelog
 #  - all non-v2.0 specs
 #  - clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
 #     (or is that what Issue is supposed to be doing?)
@@ -44,6 +43,12 @@ def timescrub(t)
   #  i0.created_at == i1.created_at  # this will be false!
   #      
   Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset
+end
+
+# it's rude to pollute the global namespace.
+#
+def date(t)
+  t.strftime "%Y/%m/%d %H:%M:%S"
 end
 
 class Issue  
@@ -104,6 +109,9 @@ class Issue
     def to_s(opts={})
       if opts[:simple]
         "#{attribute} : #{old_value} => #{new_value}"
+      else
+        fields = [ date(created_at), attribute, old_value || '[nil]', new_value ]        
+        "%10s : %10s : %s => %s" % fields        
       end
     end
   end
@@ -256,11 +264,11 @@ EOT
     super
   end
   
-  def to_s
-    <<-EOT.strip
+  def to_s(opts={})
+    text = <<-EOT.strip
 ID          : #{id}
-Created At  : #{created_at}
-Updated At  : #{updated_at}
+Created At  : #{date(created_at)}
+Updated At  : #{date(updated_at)}
 
 Summary     : #{summary}
 Kind        : #{kind}
@@ -270,7 +278,12 @@ Owner       : #{owner}
 ---
 #{description}
 EOT
+
+    if opts[:changelog]
+      text << %Q|\n\n---\n#{changelog.map(&:to_s).join("\n")}|
+    end
     
+    text
   end
   
   def to_json(state=nil)
@@ -526,8 +539,8 @@ EOT
     end
   end
   
-  def show(args)
-    args.map { |id| @taco.read(id).to_s }.join("\n\n")        
+  def show(args, opts)
+    args.map { |id| @taco.read(id).to_s(opts) }.join("\n\n")
   end
   
   def edit!(args)
@@ -691,9 +704,13 @@ if __FILE__ == $PROGRAM_NAME
     c.example 'show issue by id', 'taco show 9f9c52ce1ced4ace878155c3a98cced0'
     c.example 'show issue by unique id fragment', 'taco show ce1ced'
     c.example 'show two issues by unique id fragment', 'taco show ce1ced bc2de4'
+    c.example 'show issue with changelog', 'taco show --changelog 9f9c52'
+    
+    c.option '--changelog', nil, 'shows the changelog'
+    
     c.action do |args, options|
       begin
-        puts cli.show args
+        puts cli.show args, { :changelog => options.changelog }
       rescue Exception => e
         puts "Error: #{e}"
         exit 1

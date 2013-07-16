@@ -314,8 +314,8 @@ describe Issue do
     it "should return a formatted string" do
       text = <<-EOT.strip
 ID          : #{issue.id}
-Created At  : #{issue.created_at}
-Updated At  : #{issue.updated_at}
+Created At  : #{date(issue.created_at)}
+Updated At  : #{date(issue.updated_at)}
 
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
@@ -446,6 +446,27 @@ EOT
       end
     end      
     
+    it "shows the changelog in to_s (optionally)" do
+      text = <<-EOT.strip
+ID          : #{issue.id}
+Created At  : #{date(issue.created_at)}
+Updated At  : #{date(issue.updated_at)}
+
+Summary     : #{issue.summary}
+Kind        : #{issue.kind}
+Status      : #{issue.status}
+Owner       : #{issue.owner}
+
+---
+#{issue.description}
+
+---
+#{issue.changelog.map(&:to_s).join("\n")}
+EOT
+  
+      issue.to_s(:changelog => true).should eq text
+    end
+        
     describe "serializatin" do
       it "gets jsonified by Issue.to_json" do
         old_summary = issue.summary

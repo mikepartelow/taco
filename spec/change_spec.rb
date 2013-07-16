@@ -90,5 +90,12 @@ describe Issue::Change do
       expected = "#{valid_change.attribute} : #{valid_change.old_value} => #{valid_change.new_value}"
       valid_change.to_s(:simple => true).should eq expected
     end
+    
+    it "formats a string" do
+      fields = [ date(valid_change.created_at), valid_change.attribute, valid_change.old_value, valid_change.new_value ]
+      expected = "%10s : %10s : %s => %s" % fields
+      
+      valid_change.to_s.should eq expected
+    end    
   end
 end
