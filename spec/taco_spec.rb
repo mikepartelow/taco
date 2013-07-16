@@ -12,9 +12,7 @@ describe Taco do
   describe "initialization" do
     it "should find a home" do
       taco.home.should start_with root
-    end
-    
-    it "parses the config file"
+    end    
   end
   
   describe "interface" do

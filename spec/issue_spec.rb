@@ -47,6 +47,8 @@ describe Issue do
 
     it { should respond_to :description= }
     
+    it { should respond_to :changelog }
+    
     it { should be_valid }
   end
   
@@ -116,6 +118,7 @@ describe Issue do
     describe "json" do
       it "should serialize to json" do
         the_alleged_json = issue.to_json
+        the_alleged_json.should_not be_nil
         expect { JSON.parse(the_alleged_json) }.to_not raise_error(JSON::ParserError)
       end
         
@@ -227,6 +230,13 @@ describe Issue do
         issue.send(attr).should eq valid_attributes[attr]
       end
     end    
+    
+    it "initializes the changelog from arguments" do
+      change = Issue::Change.new(:created_at => Time.new(2007, 5, 23, 5, 23, 5), :attribute => :summary, :new_value => "whatever")
+      issue = Issue.new(valid_attributes, [ change ] )
+      issue.changelog.size.should eq 1
+      issue.changelog.should eq [ change ]
+    end
   end
   
   describe "attributes" do
@@ -270,6 +280,13 @@ describe Issue do
         issue.updated_at.should_not eq old_updated_at
         issue.updated_at.should be_within(2).of(Time.now)
       end        
+      
+      it "does not have sub-second accuracy" do
+        old_updated_at = issue.updated_at
+        issue.summary = "foo bar"
+        issue.updated_at.subsec.should eq 0
+      end      
+      
     end
     
     describe "assignment" do
@@ -297,8 +314,8 @@ describe Issue do
     it "should return a formatted string" do
       text = <<-EOT.strip
 ID          : #{issue.id}
-Created At  : #{issue.created_at}
-Updated At  : #{issue.updated_at}
+Created At  : #{date(issue.created_at)}
+Updated At  : #{date(issue.updated_at)}
 
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
@@ -366,6 +383,112 @@ EOT
       issues[0].id.should_not eq issues[1].id
       issues.sort.should_not eq issues.shuffle
       issues.sort.should eq issues.sort_by(&:id)
+    end
+    
+    it "implements equality" do
+      reissue = issue.dup      
+      issue.should eq reissue
+    
+      reissue.summary = "this makes a change"      
+      issue.should_not eq reissue
+    end    
+  end
+  
+  describe "changelog" do
+    it "is empty on an Issue with only unsettable attributes" do
+      issue = Issue.new
+      issue.changelog.should eq []      
+    end
+    
+    it "initializes the changelog from Issue::initialize" do
+      issue.changelog.size.should eq Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.size
+      Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.each do |attr, data|
+        issue.changelog.any? { |change| change.attribute == attr }.should be_true
+      end
+    end
+    
+    it "records attribute changes" do
+      old_summary = issue.summary
+      issue.summary = "summary is changed"
+      issue.changelog.size.should eq (1 + Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.size)
+      
+      issue.changelog[-1].created_at.should be_within(2).of(Time.now)
+      issue.changelog[-1].attribute.should eq :summary
+      issue.changelog[-1].old_value.should eq old_summary
+      issue.changelog[-1].new_value.should eq "summary is changed"
+    end
+
+    it "does not record changes to updated_at or created_at" do
+      issue.changelog.any? { |change| change.attribute == :created_at || change.attribute == :updated_at }.should be_false
+      issue.summary = "this should update updated_at"
+      issue.changelog.any? { |change| change.attribute == :created_at || change.attribute == :updated_at }.should be_false
+    end
+
+    it "has a created_at timestamp for each entry" do
+      issue.changelog.any? { |change| change.created_at.nil? }.should be_false
+    end
+    
+    it "is not relevant for issue comparisons" do
+      reissue = Issue.new(valid_attributes)
+      issue.should eq reissue
+      
+      reissue.summary = "this makes a change"      
+      issue.should_not eq reissue
+      reissue.changelog.size.should be > issue.changelog.size      
+      
+      reissue.summary = issue.summary      
+      reissue.changelog.size.should be > issue.changelog.size      
+
+      # the two issues are not "eq" because the timestamps differ
+      #
+      Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.each do |attr, data|
+        issue.send(attr).should eq reissue.send(attr)
+      end
+    end      
+    
+    it "shows the changelog in to_s (optionally)" do
+      text = <<-EOT.strip
+ID          : #{issue.id}
+Created At  : #{date(issue.created_at)}
+Updated At  : #{date(issue.updated_at)}
+
+Summary     : #{issue.summary}
+Kind        : #{issue.kind}
+Status      : #{issue.status}
+Owner       : #{issue.owner}
+
+---
+#{issue.description}
+
+---
+#{issue.changelog.map(&:to_s).join("\n")}
+EOT
+  
+      issue.to_s(:changelog => true).should eq text
+    end
+        
+    describe "serializatin" do
+      it "gets jsonified by Issue.to_json" do
+        old_summary = issue.summary
+        issue.summary = "a new summary for a new era"
+        the_alleged_json = issue.to_json
+        the_alleged_json.should_not be_nil
+        the_alleged_json.should include old_summary
+        expect { JSON.parse(the_alleged_json) }.to_not raise_error(JSON::ParserError)         
+      end      
+      
+      it "gets rubified by Issue.from_json" do
+        old_summary = issue.summary
+        issue.summary = "a new summary for a new era"
+        changelog_size = issue.changelog.size
+        the_alleged_json = issue.to_json
+        
+        reissue = Issue.from_json(the_alleged_json)
+        reissue.changelog.size.should eq changelog_size
+        reissue.changelog[-1].attribute.should eq :summary
+        reissue.changelog[-1].old_value.should eq old_summary
+        reissue.changelog[-1].new_value.should eq "a new summary for a new era"
+      end        
     end
   end
 end
