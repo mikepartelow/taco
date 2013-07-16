@@ -230,6 +230,13 @@ describe Issue do
         issue.send(attr).should eq valid_attributes[attr]
       end
     end    
+    
+    it "initializes the changelog from arguments" do
+      change = Issue::Change.new(:created_at => Time.new(2007, 5, 23, 5, 23, 5), :attribute => :summary, :new_value => "whatever")
+      issue = Issue.new(valid_attributes, [ change ] )
+      issue.changelog.size.should eq 1
+      issue.changelog.should eq [ change ]
+    end
   end
   
   describe "attributes" do
@@ -440,8 +447,27 @@ EOT
     end      
     
     describe "serializatin" do
-      it "gets jsonified by Issue.to_json"
-      it "gets rubified by Issue.from_json"
+      it "gets jsonified by Issue.to_json" do
+        old_summary = issue.summary
+        issue.summary = "a new summary for a new era"
+        the_alleged_json = issue.to_json
+        the_alleged_json.should_not be_nil
+        the_alleged_json.should include old_summary
+        expect { JSON.parse(the_alleged_json) }.to_not raise_error(JSON::ParserError)         
+      end      
+      
+      it "gets rubified by Issue.from_json" do
+        old_summary = issue.summary
+        issue.summary = "a new summary for a new era"
+        changelog_size = issue.changelog.size
+        the_alleged_json = issue.to_json
+        
+        reissue = Issue.from_json(the_alleged_json)
+        reissue.changelog.size.should eq changelog_size
+        reissue.changelog[-1].attribute.should eq :summary
+        reissue.changelog[-1].old_value.should eq old_summary
+        reissue.changelog[-1].new_value.should eq "a new summary for a new era"
+      end        
     end
   end
 end

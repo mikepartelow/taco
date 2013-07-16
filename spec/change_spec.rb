@@ -1,7 +1,7 @@
 require 'taco'
 
 describe Issue::Change do
-  let(:valid_change) { Issue::Change.new :attribute => 'foo', :old_value => 'bar', :new_value => 'baz' }
+  let(:valid_change) { Issue::Change.new :attribute => :foo, :old_value => 'bar', :new_value => 'baz' }
   
   it { should respond_to :created_at }
   it { should respond_to :attribute }
@@ -11,6 +11,8 @@ describe Issue::Change do
   it { should respond_to :valid? }
   it { should respond_to :to_json }
   it { should respond_to :to_s }
+  
+  specify { Issue::Change.should respond_to :from_json }
   
   describe "initialization" do
     it "initializes created_at" do
@@ -22,7 +24,7 @@ describe Issue::Change do
     end
     
     it "sets created_at from arguments" do
-      t = Time.now - 100
+      t = Time.new 2007, 5, 23, 5, 23, 5
       Issue::Change.new(:created_at => t).created_at.should eq t
     end
     
@@ -30,6 +32,23 @@ describe Issue::Change do
       expect {
         Issue::Change.new(:foobar => :barbaz)
       }.to raise_error(ArgumentError)
+    end
+    
+    it "changes types as needed" do
+      change = Issue::Change::new :created_at => Time.new.to_s, :attribute => 'summary', :new_value => 'bar'
+      change.created_at.class.should eq Time
+      change.attribute.class.should eq Symbol
+      change.new_value.class.should eq String
+    end
+  end
+  
+  describe "created_at" do
+    it "does not have subsec accuracy" do
+      bad_time = Time.new 2007, 5, 23, 5, 5, 5, 5
+      
+      Issue::Change.new(:created_at => bad_time).created_at.subsec.should eq 0      
+      
+      1.upto(100) { Issue::Change.new.created_at.subsec.should eq 0 }
     end
   end
   
@@ -49,7 +68,21 @@ describe Issue::Change do
       the_alleged_json = valid_change.to_json
       the_alleged_json.should_not be_nil
       expect { JSON.parse(the_alleged_json) }.to_not raise_error(JSON::ParserError)
-    end    
+    end  
+    
+    it "should serialize from json" do
+      hopeful_change = Issue::Change.from_json(valid_change.to_json)
+      hopeful_change.created_at.should eq valid_change.created_at
+      hopeful_change.attribute.should eq valid_change.attribute
+      hopeful_change.old_value.should eq valid_change.old_value
+      hopeful_change.new_value.should eq valid_change.new_value 
+    end      
+    
+    it "raises Issue::Change::Invalid when parsing invalid json" do
+      expect {
+        Issue::Change.from_json("foo bar baz")
+      }.to raise_error(Issue::Change::Invalid)
+    end
   end
   
   describe "to_s" do
