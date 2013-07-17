@@ -1,5 +1,7 @@
 #!/bin/env ruby
 
+# FIXME: this whole file has become a giant pile of crap.  
+#
 template_path = ARGV[0]
 
 if write_path = ENV['EDITOR_WRITE_INPUT']
@@ -16,7 +18,17 @@ else
   text = open(template_path, 'r') { |f| f.read }
   text = text.lines.map do |line|
     if line =~ /^(\w+)\s*:\s*$/
-      line = "#{$1} : hello there"
+      if value = ENV["EDITOR_FIELD_#{$1.upcase}"]
+        line = "#{$1} : #{value}"
+      else
+        line = "#{$1} : hello there"
+      end
+    elsif line =~ /^(\w+)\s*:\s*(\w+)$/
+      if value = ENV["EDITOR_FIELD_#{$1.upcase}"]
+        line = "#{$1} : #{value}"
+      else
+        line = line
+      end      
     else
       line = line
     end
@@ -30,5 +42,4 @@ else
 end
 
 open(template_path, 'w') { |f| f.write(text) }
-
 exit 0

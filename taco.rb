@@ -495,11 +495,11 @@ class Taco
 end
 
 class IssueEditor
-  def initialize(taco, opts={})    
-    @taco = taco    
+  def initialize(taco, retry_path)    
+    @taco, @retry_path = taco, retry_path
   end
   
-  def new_issue!(opts={})    
+  def new_issue!(opts={})
     if opts[:from_file]
       text = open(opts[:from_file]) { |f| f.read }
     else
@@ -521,7 +521,7 @@ class IssueEditor
       begin
         @taco.write! issue
       rescue Exception => e
-        # open(@retry_path, 'w') { |f| f.write(text) } if text
+        open(@retry_path, 'w') { |f| f.write(text) } if text
         raise e
       end
     end
@@ -569,7 +569,9 @@ EOT
   
   def initialize(taco=nil)
     @taco = taco || Taco.new
-        
+    
+    @retry_path = File.join(@taco.home, RETRY_NAME)
+    
     @rc_path = File.join(@taco.home, RC_NAME)
     @config = parse_rc
     
@@ -589,9 +591,12 @@ EOT
   end
   
   def new!(args, opts={})
-    ie = IssueEditor.new @taco
+    ie = IssueEditor.new @taco, @retry_path
 
-    issue = if args.size == 0
+    issue = if opts[:retry]
+      text = open(@retry_path) { |f| f.read }
+      ie.new_issue! :template => text
+    elsif args.size == 0
       ie.new_issue! :template => (Issue.new.to_template % @config[:defaults])
     elsif args.size == 1
       ie.new_issue! :from_file => args[0]
@@ -609,7 +614,7 @@ EOT
   end
   
   def edit!(args)
-    ie = IssueEditor.new @taco
+    ie = IssueEditor.new @taco, @retry_path
     if issue = ie.edit_issue!(@taco.read(args[0]))
       "Updated Issue #{issue.id}"
     else

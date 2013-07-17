@@ -324,12 +324,14 @@ EOT
         end
              
         it "allows editor retry after failed validation in interactive mode" do
-          r, out = ex 'new %s' % issue_path, :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!" }          
+          open(TACORC_PATH, 'w') { |f| f.write("Kind = NotBogus1, NotBogus2") }        
+          
+          r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
           r.should_not eq 0
           out.should include "is not an allowed value for Kind"
           out.should include "--retry"
-          
-          r, out = ex 'new --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH }
+
+          r, out = ex 'new --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
           r.should eq 0
           issue_id = out.split("Created Issue ")[1]
 
