@@ -327,7 +327,7 @@ EOT
           r, out = ex 'new %s' % issue_path, :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!" }          
           r.should_not eq 0
           out.should include "is not an allowed value for Kind"
-          out.should include "--retry to resume creating/editing"
+          out.should include "--retry"
           
           r, out = ex 'new --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH }
           r.should eq 0
@@ -338,10 +338,12 @@ EOT
         end
         
         it "doesn't allow --retry if validation has not failed" do
-          r, out = ex 'new --retry'
+          r, out = ex 'new --retry', :env => { 'EDITOR' => EDITOR_PATH }
           r.should_not eq 0
           out.should include "No previous edit session was found."
         end
+        
+        it "allows --retry for non-interactive new"
         
         it "allows users to specify required fields" # v2.0
       end
@@ -419,7 +421,7 @@ EOT
       r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
       r.should_not eq 0
       out.should include "is not an allowed value for Kind"
-      out.should include "--retry to resume creating/editing"
+      out.should include "--retry"
       
       r, out = ex 'edit #{issue.id} --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH }
       r.should eq 0

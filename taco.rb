@@ -25,6 +25,7 @@ require 'time'
 
 #  - some way of constraining Change :attribute to Issue::SCHEMA_ATTRIBUTES
 #
+#  - don't report validation problems one at a time, report all of them at once
 #
 #  PATH TO 1.0
 #  ---
@@ -493,6 +494,60 @@ class Taco
   end
 end
 
+class IssueEditor
+  def initialize(taco, opts={})    
+    @taco = taco    
+  end
+  
+  def new_issue!(opts={})    
+    if opts[:from_file]
+      text = open(opts[:from_file]) { |f| f.read }
+    else
+      raise ArgumentError.new("Please define $EDITOR in your environment.") unless ENV['EDITOR']
+      text = invoke_editor(opts[:template])
+    end
+
+    write_issue!(Issue.from_template(text), text) if text
+  end
+  
+  def edit_issue!(issue)
+    if text = invoke_editor(issue.to_template)
+      write_issue!(issue.update_from_template!(text), text)
+    end
+  end
+  
+  private
+    def write_issue!(issue, text)
+      begin
+        @taco.write! issue
+      rescue Exception => e
+        # open(@retry_path, 'w') { |f| f.write(text) } if text
+        raise e
+      end
+    end
+      
+    def invoke_editor(template)
+      text = nil
+      file = Tempfile.new('taco')    
+
+      begin
+        file.write(template)
+        file.close
+
+        cmd = "$EDITOR #{file.path}"
+        system(cmd)
+
+        open(file.path) do |f| 
+          text = f.read
+        end
+      ensure
+        File.unlink(file.path) rescue nil
+      end
+
+      text == template ? nil : text
+    end
+end
+
 class TacoCLI
   RC_NAME = '.tacorc'
   RC_TEXT =<<-EOT.strip
@@ -508,12 +563,13 @@ Status = Open, Closed
 DefaultKind = Defect
 DefaultStatus = Open
 EOT
+  RETRY_NAME = '.taco_retry.txt'
 
   class ParseError < Exception; end
   
   def initialize(taco=nil)
     @taco = taco || Taco.new
-    
+        
     @rc_path = File.join(@taco.home, RC_NAME)
     @config = parse_rc
     
@@ -532,18 +588,19 @@ EOT
     the_list.join("\n")
   end
   
-  def new!(args)
-    if args.size > 0
-      the_template = open(args[0]) { |f| f.read }
-      issue = @taco.write!(Issue.from_template(the_template))
-      
+  def new!(args, opts={})
+    ie = IssueEditor.new @taco
+
+    issue = if args.size == 0
+      ie.new_issue! :template => (Issue.new.to_template % @config[:defaults])
+    elsif args.size == 1
+      ie.new_issue! :from_file => args[0]
+    end
+    
+    if issue
       "Created Issue #{issue.id}"
-    elsif args.size == 0
-      if issue = interactive_edit!
-        "Created Issue #{issue.id}"
-      else
-        "Aborted."
-      end
+    else
+      "Aborted."
     end
   end
   
@@ -552,70 +609,23 @@ EOT
   end
   
   def edit!(args)
-    if args.size == 1
-      issue = @taco.read args[0]
-      if issue = interactive_edit!(issue)
-        "Updated Issue #{issue.id}"
-      else
-        "Aborted."
-      end
+    ie = IssueEditor.new @taco
+    if issue = ie.edit_issue!(@taco.read(args[0]))
+      "Updated Issue #{issue.id}"
+    else
+      "Aborted."
     end
   end
   
   def template(opts)
     if opts[:defaults]
-      format_template(Issue::TEMPLATE).strip
+      (Issue::TEMPLATE % @config[:defaults]).strip
     else
       Issue::TEMPLATE.gsub(/%{.*?}/, '').strip
     end
   end
       
   private  
-    def interactive_edit!(issue=Issue.new)    
-      raise ArgumentError.new("Please define $EDITOR in your environment.") unless ENV['EDITOR']
-
-      template = format_template(issue.to_template)
-      new_issue = nil      
-
-      file = Tempfile.new('taco')    
-      begin
-        path = file.path
-        file.write(template)
-        file.close
-    
-        cmd = "$EDITOR #{path}"
-        system(cmd)
-  
-        begin
-          open(path) do |f| 
-            text = f.read
-            raise Errno::ENOENT if text == template
-            
-            if issue.new?
-              new_issue = Issue.from_template(text)
-            else
-              issue.update_from_template!(text)
-              new_issue = issue
-            end
-          end      
-        rescue Errno::ENOENT
-          new_issue = nil
-        end
-      ensure
-        File.unlink(path) rescue nil
-      end
-
-      if new_issue
-        @taco.write! new_issue
-      else
-        nil
-      end
-    end
-  
-    def format_template(text)
-      text % @config[:defaults]
-    end
-    
     def parse_rc
       defaults = Hash[Issue::SCHEMA_ATTRIBUTES.select { |attr, data| data[:settable] }.map { |attr, data| [ attr, nil ] } ] 
       config = { :defaults => defaults, :allowed => {} }
@@ -699,15 +709,22 @@ if __FILE__ == $PROGRAM_NAME
     
   command :new do |c|
     c.syntax = 'taco new [path_to_issue_template]'
-    c.summary = 'create a new issue'
-    c.description = "Create a new issue, interactively or from a template file.\n    Interactive mode launches $EDITOR with an Issue template."
-    c.example 'interactive issue creation', 'taco new'
-    c.example 'issue creation from a file', 'taco new /path/to/template'    
+    c.summary = 'create a new Issue'
+    c.description = "Create a new Issue, interactively or from a template file.\n    Interactive mode launches $EDITOR with an Issue template."
+    c.example 'interactive Issue creation', 'taco new'
+    c.example 'Issue creation from a file', 'taco new /path/to/template'    
+    
+    c.option '--retry', nil, 'retry a failed Issue creation'
+    
     c.action do |args, options|
       begin
-        puts cli.new! args
+        begin
+          puts cli.new! args, { :retry => options.retry }
+        rescue Issue::Invalid => e
+          raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")      
+        end
       rescue Exception => e
-        puts "Error: #{e}"
+        puts "Error: #{e}"        
         exit 1
       end
     end  
