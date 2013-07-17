@@ -591,18 +591,15 @@ EOT
   end
   
   def new!(args, opts={})
-    opts = if opts[:retry]
-      text = open(@retry_path) { |f| f.read }
-      { :template => text }
+    editor_opts = if opts[:retry]
+      { :template => open(@retry_path) { |f| f.read } }
     elsif args.size == 0
       { :template => (Issue.new.to_template % @config[:defaults]) }
     elsif args.size == 1
       { :from_file => args[0] }
     end
-    
-    issue = IssueEditor.new(@taco, @retry_path).new_issue!(opts)
 
-    if issue
+    if issue = IssueEditor.new(@taco, @retry_path).new_issue!(editor_opts)
       "Created Issue #{issue.id}"
     else
       "Aborted."
