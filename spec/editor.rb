@@ -1,8 +1,15 @@
 #!/bin/env ruby
 
+template_path = ARGV[0]
+
+if write_path = ENV['EDITOR_WRITE_INPUT']
+  text = open(template_path, 'r') { |f| f.read }
+  open(write_path, 'w') { |f| f.write(text) }
+  exit 0
+end
+
 exit(1) if ENV['EDITOR_ABORT']
 
-template_path = ARGV[0]
 if input_path = ENV['EDITOR_INPUT_PATH']
   text = open(input_path, 'r') { |f| f.read }
 else

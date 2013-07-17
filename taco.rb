@@ -111,7 +111,7 @@ class Issue
         "#{attribute} : #{old_value} => #{new_value}"
       else
         fields = [ date(created_at), attribute, old_value || '[nil]', new_value ]        
-        "%10s : %10s : %s => %s" % fields        
+        "%10s : %12s : %s => %s" % fields        
       end
     end
   end
@@ -296,8 +296,9 @@ EOT
     if new?
       header = "# New Issue\n#"
       body = TEMPLATE
+      footer = ""
     else
-      header =<<-EOT.strip
+      header =<<-EOT
 # Edit Issue
 #
 # ID          : #{id}
@@ -306,8 +307,15 @@ EOT
 #
 EOT
       body = TEMPLATE % @issue
+      
+      footer =<<-EOT      
+# ChangeLog
+#
+#{changelog.map { |c| "# #{c.to_s}"}.join("\n")}      
+EOT
     end
-    header + "\n" + body
+    
+    (header + "\n" + body + "\n\n" + footer).strip
   end
   
   def self.from_json(the_json)
@@ -553,6 +561,14 @@ EOT
       end
     end
   end
+  
+  def template(opts)
+    if opts[:defaults]
+      format_template(Issue::TEMPLATE).strip
+    else
+      Issue::TEMPLATE.gsub(/%{.*?}/, '').strip
+    end
+  end
       
   private  
     def interactive_edit!(issue=Issue.new)    
@@ -699,12 +715,12 @@ if __FILE__ == $PROGRAM_NAME
   
   command :show do |c|
     c.syntax = 'taco show <issue id0..issue idN>'
-    c.summary = 'display details for one or more issues'
-    c.description = 'Display details for one or more issues'
-    c.example 'show issue by id', 'taco show 9f9c52ce1ced4ace878155c3a98cced0'
-    c.example 'show issue by unique id fragment', 'taco show ce1ced'
-    c.example 'show two issues by unique id fragment', 'taco show ce1ced bc2de4'
-    c.example 'show issue with changelog', 'taco show --changelog 9f9c52'
+    c.summary = 'display details for one or more Issues'
+    c.description = 'Display details for one or more Issues'
+    c.example 'show Issue by id', 'taco show 9f9c52ce1ced4ace878155c3a98cced0'
+    c.example 'show Issue by unique id fragment', 'taco show ce1ced'
+    c.example 'show two Issues by unique id fragment', 'taco show ce1ced bc2de4'
+    c.example 'show Issue with changelog', 'taco show --changelog 9f9c52'
     
     c.option '--changelog', nil, 'shows the changelog'
     
@@ -720,11 +736,28 @@ if __FILE__ == $PROGRAM_NAME
 
   command :edit do |c|
     c.syntax = 'taco edit <issue_id>'
-    c.summary = 'edit an issue'
-    c.description = 'Edit details for an issue'
+    c.summary = 'edit an Issue'
+    c.description = 'Edit details for an Issue'
     c.action do |args, options|
       begin
         puts cli.edit! args
+      rescue Exception => e
+        puts "Error: #{e}"
+        exit 1
+      end
+    end  
+  end
+
+  command :template do |c|
+    c.syntax = 'taco template'
+    c.summary = 'print the Issue template on stdout'
+    c.description = 'Print the Issue template on stdout'
+    
+    c.option '--defaults', nil, 'Print the Issue template with default values'
+    
+    c.action do |args, options|
+      begin
+        puts cli.template({ :defaults => options.defaults })
       rescue Exception => e
         puts "Error: #{e}"
         exit 1

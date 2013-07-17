@@ -353,6 +353,7 @@ EOT
 # Created At  : #{issue.created_at}
 # Updated At  : #{issue.updated_at}
 #
+
 # Lines beginning with # will be ignored.
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
@@ -360,6 +361,10 @@ Status      : #{issue.status}
 Owner       : #{issue.owner}
 # Everything past this line is Issue Description
 #{issue.description}
+
+# ChangeLog
+#
+#{issue.changelog.map { |c| "# #{c.to_s}"}.join("\n")}
 EOT
       issue.to_template.should eq edit_issue_template
     end

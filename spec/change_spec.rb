@@ -93,7 +93,7 @@ describe Issue::Change do
     
     it "formats a string" do
       fields = [ date(valid_change.created_at), valid_change.attribute, valid_change.old_value, valid_change.new_value ]
-      expected = "%10s : %10s : %s => %s" % fields
+      expected = "%10s : %12s : %s => %s" % fields
       
       valid_change.to_s.should eq expected
     end    

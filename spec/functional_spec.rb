@@ -5,6 +5,7 @@ TACO_PATH = File.realdirpath "./taco.rb"
 TMP_PATH = File.realdirpath "./spec/tmp"
 TACORC_PATH = File.join(TMP_PATH, '.taco', '.tacorc')
 EDITOR_PATH = File.realdirpath "./spec/editor.rb"
+EDITOR_WRITE_PATH = File.join(TMP_PATH, 'editor_output.txt')
 
 def ex(args, opts={:env => {}, :stderr => false})
   opts[:env] ||= {}
@@ -26,6 +27,17 @@ describe "Command Line Interface" do
   let(:issues) { FactoryGirl.build_list(:issue, 100) }
   let(:attrs) { FactoryGirl.attributes_for(:issue) }
   let(:issue_path) { File.realdirpath 'spec/tmp/issue' }
+  let(:template) { <<-EOT.strip
+# Lines beginning with # will be ignored.
+Summary     : %{summary}
+Kind        : %{kind}
+Status      : %{status}
+Owner       : %{owner}
+# Everything past this line is Issue Description
+%{description}
+EOT
+  }  
+
   
   before do 
     FileUtils.rm_rf(TMP_PATH)
@@ -137,17 +149,6 @@ describe "Command Line Interface" do
   end
   
   describe "new" do
-      let(:template) { <<-EOT
-# Lines beginning with # will be ignored.
-Summary   : %{summary}
-Kind      : %{kind}
-Status    : %{status}
-Owner     : %{owner}
-# Everything past this line is Issue Description
-%{description}
-EOT
-  }  
-
     before do
       taco.init!
       taco.write! issues
@@ -322,7 +323,25 @@ EOT
           out.should include "Unknown Issue attribute: foo"                    
         end
              
-        it "returns to the editor after failed validation in interactive mode so the user doesn't lose all their hard-typed information"
+        it "allows editor retry after failed validation in interactive mode" do
+          r, out = ex 'new %s' % issue_path, :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!" }          
+          r.should_not eq 0
+          out.should include "is not an allowed value for Kind"
+          out.should include "--retry to resume creating/editing"
+          
+          r, out = ex 'new --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH }
+          r.should eq 0
+          issue_id = out.split("Created Issue ")[1]
+
+          issue = taco.read(issue_id)
+          issue.description.should include "this is new issue sparta!"          
+        end
+        
+        it "doesn't allow --retry if validation has not failed" do
+          r, out = ex 'new --retry'
+          r.should_not eq 0
+          out.should include "No previous edit session was found."
+        end
         
         it "allows users to specify required fields" # v2.0
       end
@@ -385,13 +404,37 @@ EOT
       reissue.updated_at.should_not eq old_updated_at
     end
         
-    it "shows a commented changelog when editing"
+    it "shows a commented changelog when editing" do
+      issue = taco.read issues[0].id
+      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_WRITE_INPUT' => EDITOR_WRITE_PATH, 'EDITOR_ABORT' => "yes" }
+
+      input = open(EDITOR_WRITE_PATH) { |f| f.read }
+      input.should include ('# ' + issue.changelog.map(&:to_s)[0])
+    end
+    
+    it "allows editor retry after failed validation in interactive mode" do
+      issue = taco.read issues[0].id
+
+      # FIXME: need to somehow invalidate Kind
+      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
+      r.should_not eq 0
+      out.should include "is not an allowed value for Kind"
+      out.should include "--retry to resume creating/editing"
+      
+      r, out = ex 'edit #{issue.id} --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH }
+      r.should eq 0
+
+      reissue = taco.read(issue.id)
+      reissue.description.should include "this is edited sparta!"
+    end
+    
+    it "doesn't allow --retry if validation has not failed" do
+      r, out = ex 'edit #{issue.id} --retry'
+      r.should_not eq 0
+      out.should include "No previous edit session was found."
+    end
     
     it "displays an error for wrong number of arguments"
-  end
-  
-  describe "comment" do
-    it "adds comments to an existing issue"
   end
   
   describe "changelog" do
@@ -405,7 +448,32 @@ EOT
   end
   
   describe "template" do
-    it "displays the Issue template"
-    it "displays the Issue template with defaults"
+    let(:tacorc) { <<-EOT.strip
+Kind = KindNumber1, KindNumber2, KindNumber3
+DefaultKind = KindNumber2
+EOT
+    }
+
+    before do
+      taco.init!
+      open(TACORC_PATH, 'w') { |f| f.write(tacorc) }        
+    end
+    
+    it "displays the Issue template" do
+      r, out = ex 'template'
+      r.should eq 0
+      out.should eq template.gsub(/%{.*?}/, '').strip
+    end
+    
+    it "displays the Issue template with defaults" do
+      r, out = ex 'template -d'
+      r.should eq 0
+      out.should eq template.gsub(/%{kind}/, 'KindNumber2').gsub(/%{.*?}/, '').strip
+    end
   end  
+  
+  describe "comment" do
+    it "adds comments to an existing issue"
+  end
+  
 end
