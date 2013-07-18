@@ -38,7 +38,6 @@ Owner       : %{owner}
 EOT
   }  
 
-  
   before do 
     FileUtils.rm_rf(TMP_PATH)
     FileUtils.mkdir_p(TMP_PATH)
@@ -322,31 +321,7 @@ EOT
           r.should_not eq 0
           out.should include "Unknown Issue attribute: foo"                    
         end
-             
-        it "allows editor retry after failed validation in interactive mode" do
-          open(TACORC_PATH, 'w') { |f| f.write("Kind = NotBogus1, NotBogus2") }        
-          
-          r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
-          r.should_not eq 0
-          out.should include "is not an allowed value for Kind"
-          out.should include "--retry"
-
-          r, out = ex 'new --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
-          r.should eq 0
-          issue_id = out.split("Created Issue ")[1]
-
-          issue = taco.read(issue_id)
-          issue.description.should include "this is new issue sparta!"          
-        end
-        
-        it "doesn't allow --retry if validation has not failed" do
-          r, out = ex 'new --retry', :env => { 'EDITOR' => EDITOR_PATH }
-          r.should_not eq 0
-          out.should include "No previous edit session was found."
-        end
-        
-        it "allows --retry for non-interactive new"
-        
+                     
         it "allows users to specify required fields" # v2.0
       end
     end
@@ -415,29 +390,7 @@ EOT
       input = open(EDITOR_WRITE_PATH) { |f| f.read }
       input.should include ('# ' + issue.changelog.map(&:to_s)[0])
     end
-    
-    it "allows editor retry after failed validation in interactive mode" do
-      issue = taco.read issues[0].id
-
-      # FIXME: need to somehow invalidate Kind
-      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
-      r.should_not eq 0
-      out.should include "is not an allowed value for Kind"
-      out.should include "--retry"
-      
-      r, out = ex 'edit #{issue.id} --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH }
-      r.should eq 0
-
-      reissue = taco.read(issue.id)
-      reissue.description.should include "this is edited sparta!"
-    end
-    
-    it "doesn't allow --retry if validation has not failed" do
-      r, out = ex 'edit #{issue.id} --retry'
-      r.should_not eq 0
-      out.should include "No previous edit session was found."
-    end
-    
+        
     it "displays an error for wrong number of arguments"
   end
   
@@ -475,6 +428,113 @@ EOT
       out.should eq template.gsub(/%{kind}/, 'KindNumber2').gsub(/%{.*?}/, '').strip
     end
   end  
+  
+  describe "retry" do
+    before do
+      taco.init!
+      taco.write! issues      
+      open(TACORC_PATH, 'w') { |f| f.write("Kind = NotBogus1, NotBogus2") }
+    end
+    
+    describe "new" do
+      it "allows editor retry after failed validation in interactive mode" do
+        r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
+        r.should_not eq 0
+        out.should include "is not an allowed value for Kind"
+        out.should include "--retry"
+
+        r, out = ex 'new --retry', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
+        r.should eq 0
+        issue_id = out.split("Created Issue ")[1]
+
+        issue = taco.read(issue_id)
+        issue.description.should include "this is new issue sparta!"       
+      end
+      
+      it "doesn't allow --retry if validation has not failed" do
+        # try to --retry on a clean repo
+        r, out = ex 'new --retry', :env => { 'EDITOR' => EDITOR_PATH }
+        r.should_not eq 0
+        out.should include "No previous Issue edit session was found."
+        
+        # a valid retry
+        r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
+        r.should_not eq 0
+        out.should include "is not an allowed value for Kind"
+        out.should include "--retry"
+
+        r, out = ex 'new --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
+        r.should eq 0
+        
+        # now, there should be no --retry because the previous --retry succeeded
+        #
+        r, out = ex 'new --retry', :env => { 'EDITOR' => EDITOR_PATH }
+        r.should_not eq 0
+        out.should include "No previous Issue edit session was found."          
+      end
+            
+      it "does not allow --retry after aborted interactive new" do
+        r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_ABORT' => 'yes' }
+        r.should eq 0
+        out.should include 'Aborted.'
+        
+        r, out = ex 'new --retry', :env => { 'EDITOR' => EDITOR_PATH }
+        r.should_not eq 0
+        out.should include "No previous Issue edit session was found."        
+      end
+    end
+    
+    describe "edit" do
+      it "allows editor retry after failed validation in interactive mode" do
+        issue = taco.read issues[0].id
+
+        r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
+        r.should_not eq 0
+        out.should include "is not an allowed value for Kind"
+        out.should include "--retry"
+
+        r, out = ex "edit #{issue.id} --retry", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
+        r.should eq 0
+
+        reissue = taco.read(issue.id)
+        reissue.description.should include "this is edited sparta!"
+      end
+
+      it "doesn't allow --retry if validation has not failed" do
+        issue = taco.read issues[0].id
+        
+        r, out = ex "edit #{issue.id} --retry"
+        r.should_not eq 0
+        out.should include "No previous Issue edit session was found."
+        
+        r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
+        r.should_not eq 0
+        out.should include "is not an allowed value for Kind"
+        out.should include "--retry"
+
+        r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
+        r.should eq 0
+        
+        # now, there should be no --retry because the previous --retry succeeded
+        #
+        r, out = ex "edit #{issue.id} --retry", :env => { 'EDITOR' => EDITOR_PATH }
+        r.should_not eq 0
+        out.should include "No previous Issue edit session was found."          
+      end
+      
+      it "does not allow --retry after aborted interactive edit" do
+        issue = taco.read issues[0].id
+        
+        r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_ABORT' => 'yes' }
+        r.should eq 0
+        out.should include 'Aborted.'
+        
+        r, out = ex "edit #{issue.id} --retry", :env => { 'EDITOR' => EDITOR_PATH }
+        r.should_not eq 0
+        out.should include "No previous Issue edit session was found."        
+      end   
+    end
+  end
   
   describe "comment" do
     it "adds comments to an existing issue"

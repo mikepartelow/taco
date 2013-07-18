@@ -510,8 +510,8 @@ class IssueEditor
     write_issue!(Issue.from_template(text), text) if text
   end
   
-  def edit_issue!(issue)
-    if text = invoke_editor(issue.to_template)
+  def edit_issue!(issue, opts={})
+    if text = invoke_editor(opts[:template] || issue.to_template)
       write_issue!(issue.update_from_template!(text), text)
     end
   end
@@ -524,6 +524,9 @@ class IssueEditor
         open(@retry_path, 'w') { |f| f.write(text) } if text
         raise e
       end
+      
+      File.unlink @retry_path rescue nil
+      issue      
     end
       
     def invoke_editor(template)
@@ -590,8 +593,9 @@ EOT
     the_list.join("\n")
   end
   
-  def new!(args, opts={})
+  def new!(args, opts)
     editor_opts = if opts[:retry]
+      raise ArgumentError.new("No previous Issue edit session was found.") unless File.exist?(@retry_path)      
       { :template => open(@retry_path) { |f| f.read } }
     elsif args.size == 0
       { :template => (Issue.new.to_template % @config[:defaults]) }
@@ -610,9 +614,15 @@ EOT
     args.map { |id| @taco.read(id).to_s(opts) }.join("\n\n")
   end
   
-  def edit!(args)
+  def edit!(args, opts)
     ie = IssueEditor.new @taco, @retry_path
-    if issue = ie.edit_issue!(@taco.read(args[0]))
+    
+    if opts[:retry]
+      raise ArgumentError.new("No previous Issue edit session was found.") unless File.exist?(@retry_path)      
+      template = open(@retry_path) { |f| f.read }
+    end
+    
+    if issue = ie.edit_issue!(@taco.read(args[0]), :template => template)
       "Updated Issue #{issue.id}"
     else
       "Aborted."
@@ -757,9 +767,16 @@ if __FILE__ == $PROGRAM_NAME
     c.syntax = 'taco edit <issue_id>'
     c.summary = 'edit an Issue'
     c.description = 'Edit details for an Issue'
+    
+    c.option '--retry', nil, 'retry a failed Issue edit'
+    
     c.action do |args, options|
       begin
-        puts cli.edit! args
+        begin
+          puts cli.edit! args, { :retry => options.retry }
+        rescue Issue::Invalid => e
+          raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")      
+        end        
       rescue Exception => e
         puts "Error: #{e}"
         exit 1
