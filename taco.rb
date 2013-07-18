@@ -7,34 +7,6 @@ require 'fileutils'
 require 'securerandom'
 require 'time'
 
-# TODO:
-#  - store schema version in each issue
-#  - query by status
-#  - arguments to 'new': taco new component:foo kind:bar summary:'ick thud wank'
-#  - simplified editing: taco edit 123abc summary:'change only this one field'
-#  - should taco config and issues go into different directories?
-
-#  - fully interactive mode (shell)
-
-#  - don't bypass commander's exception handler, fix it and use it.
-#    - fix problems with commander and send patch to owner (clone to taco until gem suffices)
-
-#  - dsl for attributes: attr :id, :class => String, :required => true, :settable => false
-#                        => creates setter/getter and validators
-#                        perhaps a different dsl for taco vs user attrs: id vs kind
-
-#  - some way of constraining Change :attribute to Issue::SCHEMA_ATTRIBUTES
-#
-#  - don't report validation problems one at a time, report all of them at once
-#
-#  PATH TO 1.0
-#  ---
-#
-#  - comments
-#  - all non-v2.0 specs
-#  - clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
-#     (or is that what Issue is supposed to be doing?)
-
 def timescrub(t)
   # Time objects have sub-second precision.  Unfortunately, this precision is lost when we serialize.  What this means
   # is that the following code will fail, most unexpectedly:
@@ -46,77 +18,78 @@ def timescrub(t)
   Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset
 end
 
-# it's rude to pollute the global namespace.
+# it's rude to pollute the global namespace, but here we go.
 #
 def date(t)
   t.strftime "%Y/%m/%d %H:%M:%S"
 end
 
-class Issue  
-  include Comparable
+class Change
+  class Invalid < Exception; end
   
-  class Change
-    class Invalid < Exception; end
-    
-    attr_reader   :created_at
-    attr_accessor :attribute
-    attr_accessor :old_value
-    attr_accessor :new_value  
-    
-    def initialize(args={})
-      args.each do |attr, value|
-        raise ArgumentError.new("Unknown attribute #{attr}") unless self.respond_to?(attr)
-        
-        case attr.to_sym
-        when :created_at
-          value = Time.parse(value) unless value.is_a?(Time)
-        when :attribute
-          value = value.to_sym
-        end
-        
-        instance_variable_set("@#{attr.to_s}", value)
+  attr_reader   :created_at
+  attr_accessor :attribute
+  attr_accessor :old_value
+  attr_accessor :new_value  
+  
+  def initialize(args={})
+    args.each do |attr, value|
+      raise ArgumentError.new("Unknown attribute #{attr}") unless self.respond_to?(attr)
+      
+      case attr.to_sym
+      when :created_at
+        value = Time.parse(value) unless value.is_a?(Time)
+      when :attribute
+        value = value.to_sym
       end
       
-      @created_at = Time.parse(@created_at) if @created_at.is_a?(String)
-      @created_at = timescrub(@created_at || Time.now)
-      
-      self
-    end  
+      instance_variable_set("@#{attr.to_s}", value)
+    end
     
-    def self.from_json(the_json)
-      begin
-        hash = JSON.parse(the_json)
-      rescue JSON::ParserError => e
-        raise Issue::Change::Invalid.new(e.to_s)
-      end
+    @created_at = Time.parse(@created_at) if @created_at.is_a?(String)
+    @created_at = timescrub(@created_at || Time.now)
+    
+    self
+  end  
+  
+  def self.from_json(the_json)
+    begin
+      hash = JSON.parse(the_json)
+    rescue JSON::ParserError => e
+      raise Change::Invalid.new(e.to_s)
+    end
 
-      Change.new(hash)      
-    end
-    
-    def valid?(opts={})
-      # old_value is optional!
-      #
-      valid = created_at && attribute && new_value
-      raise Invalid if opts[:raise] && !valid
-      valid
-    end
-    
-    def to_json(state=nil)
-      valid? :raise => true
-      hash = { :created_at => created_at, :attribute => attribute, :old_value => old_value, :new_value => new_value }
-      JSON.pretty_generate(hash)
-    end
-    
-    def to_s(opts={})
-      if opts[:simple]
-        "#{attribute} : #{old_value} => #{new_value}"
-      else
-        fields = [ date(created_at), attribute, old_value || '[nil]', new_value ]        
-        "%10s : %12s : %s => %s" % fields        
-      end
-    end
+    Change.new(hash)      
   end
   
+  def valid?(opts={})
+    # old_value is optional!
+    #
+    valid = created_at && attribute && new_value
+    raise Invalid if opts[:raise] && !valid
+    valid
+  end
+  
+  def to_json(state=nil)
+    valid? :raise => true
+    hash = { :created_at => created_at, :attribute => attribute, :old_value => old_value, :new_value => new_value }
+    JSON.pretty_generate(hash)
+  end
+  
+  def to_s(opts={})
+    if opts[:simple]
+      "#{attribute} : #{old_value} => #{new_value}"
+    else
+      fields = [ date(created_at), attribute, old_value || '[nil]', new_value ]        
+      "%10s : %12s : %s => %s" % fields        
+    end
+  end
+end
+
+
+class Issue  
+  include Comparable
+    
   attr_reader :changelog
   
   SCHEMA_ATTRIBUTES = {
@@ -137,7 +110,8 @@ Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
 Owner       : %{owner}
-# Everything past this line is Issue Description
+# Everything below the --- is Issue Description
+---
 %{description}
 EOT
 
@@ -331,9 +305,16 @@ EOT
   
   def self.from_template(text)
     issue = { :description => '' }
+    reading_description = false
     
-    text.lines.each do |line|
-      next if line =~ /^#/
+    text.lines.each_with_index do |line, index|
+      next if line =~ /^#/ || (!reading_description && line =~ /^\s*$/)
+      
+      if line =~ /^---$/
+        raise ArgumentError("Encountered extra --- delimiter on line #{index+1}") if reading_description
+        reading_description = true
+        next
+      end
       
       if line =~ /^(\w+)\s*:\s*(.*)$/
         key, value = $1.downcase.to_sym, $2.strip
@@ -341,11 +322,13 @@ EOT
         if SCHEMA_ATTRIBUTES.include?(key) && SCHEMA_ATTRIBUTES[key][:settable]
           issue[key] = value
         else
-          raise ArgumentError.new("Unknown Issue attribute: #{key}") unless SCHEMA_ATTRIBUTES.include?(key)
-          raise ArgumentError.new("Cannot set write-protected Issue attribute: #{key}")
+          raise ArgumentError.new("Unknown Issue attribute: #{key} on line #{index+1}") unless SCHEMA_ATTRIBUTES.include?(key)
+          raise ArgumentError.new("Cannot set write-protected Issue attribute: #{key} on line #{index+1}")
         end
-      else
+      elsif reading_description
         issue[:description] += line
+      else
+        raise ArgumentError.new("Cannot parse line #{index+1}")
       end
     end
     
@@ -480,7 +463,7 @@ class Taco
       
       raise Issue::Invalid.new("Issue ID does not match filename: #{issue.id} != #{id}") unless issue.id == id
       
-      short_id = (8...id.size).each do |n|
+      short_id = 8.upto(id.size).each do |n|
         short_id = id[0...n]
         break short_id unless ids.count { |i| i.include? short_id } > 1
       end
@@ -697,6 +680,8 @@ if __FILE__ == $PROGRAM_NAME
     c.description = 'Initialize a taco Issue repository in the current working directory'
     c.action do |args, options|
       begin
+        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
         puts cli.init!
       rescue Exception => e
         puts "Error: #{e}"
@@ -711,6 +696,8 @@ if __FILE__ == $PROGRAM_NAME
     c.description = 'List all taco Issues in the current repository'
     c.action do |args, options|
       begin
+        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0        
         puts cli.list
       rescue Exception => e
         puts "Error: #{e}"
@@ -730,6 +717,9 @@ if __FILE__ == $PROGRAM_NAME
     
     c.action do |args, options|
       begin
+        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") if args.size > 1
+        
         begin
           puts cli.new! args, { :retry => options.retry }
         rescue Issue::Invalid => e
@@ -772,6 +762,9 @@ if __FILE__ == $PROGRAM_NAME
     
     c.action do |args, options|
       begin
+        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 1
+        
         begin
           puts cli.edit! args, { :retry => options.retry }
         rescue Issue::Invalid => e
@@ -793,6 +786,9 @@ if __FILE__ == $PROGRAM_NAME
     
     c.action do |args, options|
       begin
+        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
+        
         puts cli.template({ :defaults => options.defaults })
       rescue Exception => e
         puts "Error: #{e}"

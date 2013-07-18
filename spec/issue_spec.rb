@@ -169,7 +169,7 @@ describe Issue do
         old_id = issue.id
         old_created_at = issue.created_at
         old_kind = issue.kind
-        
+
         issue.update_from_template! reissue.to_template
         
         issue.id.should eq old_id
@@ -181,7 +181,25 @@ describe Issue do
       end
     end
       
-    it "should do something sensible for non-key/value lines that aren't part of the description"
+    it "raises on non-attribute lines that aren't part of the description" do
+      template =<<-EOT.strip
+something
+Summary     : a summary
+weird
+Kind        : a kind
+happening here
+Status      : a status
+Owner       : an owner
+# Everything past the --- is Issue Description
+---
+this describes
+ the issue
+   quite well
+EOT
+      expect {
+        Issue.from_template template
+      }.to raise_error(ArgumentError)
+    end
   end
   
   describe "initialization" do
@@ -232,7 +250,7 @@ describe Issue do
     end    
     
     it "initializes the changelog from arguments" do
-      change = Issue::Change.new(:created_at => Time.new(2007, 5, 23, 5, 23, 5), :attribute => :summary, :new_value => "whatever")
+      change = Change.new(:created_at => Time.new(2007, 5, 23, 5, 23, 5), :attribute => :summary, :new_value => "whatever")
       issue = Issue.new(valid_attributes, [ change ] )
       issue.changelog.size.should eq 1
       issue.changelog.should eq [ change ]
@@ -339,7 +357,8 @@ Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
 Owner       : %{owner}
-# Everything past this line is Issue Description
+# Everything below the --- is Issue Description
+---
 %{description}
 EOT
       Issue.new.to_template.should eq new_issue_template
@@ -359,7 +378,8 @@ Summary     : #{issue.summary}
 Kind        : #{issue.kind}
 Status      : #{issue.status}
 Owner       : #{issue.owner}
-# Everything past this line is Issue Description
+# Everything below the --- is Issue Description
+---
 #{issue.description}
 
 # ChangeLog

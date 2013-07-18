@@ -1,0 +1,35 @@
+PATH TO 1.0
+---
+- all non-v2.0 specs
+- gemify
+
+PATH TO 1.5
+---
+- ERB/html generator
+- "list" filters/queries
+- comments
+- clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
+   (or is that what Issue is supposed to be doing?)
+
+---------
+
+TODO:
+- store schema version in each issue
+- query by status
+- arguments to 'new': taco new component:foo kind:bar summary:'ick thud wank'
+- simplified editing: taco edit 123abc summary:'change only this one field'
+- should taco config and issues go into different directories?
+
+- fully interactive mode (shell)
+
+- don't bypass commander's exception handler, fix it and use it.
+  - fix problems with commander and send patch to owner (clone to taco until gem suffices)
+
+- dsl for attributes: attr :id, :class => String, :required => true, :settable => false
+                      => creates setter/getter and validators
+                      perhaps a different dsl for taco vs user attrs: id vs kind
+
+- some way of constraining Change :attribute to Issue::SCHEMA_ATTRIBUTES
+
+- don't report validation problems one at a time, report all of them at once
+- user-specified Issue attributes via .tacorc

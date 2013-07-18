@@ -163,7 +163,13 @@ describe Taco do
         taco.list(:short_ids => true).should eq expected_list
       end
       
-      it "uses slightly longer short_ids when there is id overlap"
+      it "uses slightly longer short_ids when there is id overlap" do
+        i0 = Issue.new FactoryGirl.attributes_for(:issue).merge({:id => 'abc123xyz'})
+        i1 = Issue.new FactoryGirl.attributes_for(:issue).merge({:id => 'abc123xyt'})        
+        taco.write! [ i0, i1 ]
+        
+        taco.list(:short_ids => true).sort.should eq [ [ i0, 'abc123xyz' ], [ i1, 'abc123xyt' ] ].sort
+      end
       
       it "raises Issue::Invalid on files that are in the issue path that aren't issues" do
         open(File.join(taco.home, '123abc'), 'w') { |f| f.write("a horse is a horse of course of course") }

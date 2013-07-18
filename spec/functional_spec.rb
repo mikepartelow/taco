@@ -33,7 +33,8 @@ Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
 Owner       : %{owner}
-# Everything past this line is Issue Description
+# Everything below the --- is Issue Description
+---
 %{description}
 EOT
   }  
@@ -54,12 +55,7 @@ EOT
       
       out.should include TacoCLI::RC_NAME   
       File.exists?(File.join(taco.home, TacoCLI::RC_NAME)).should be_true      
-    end
-    
-    it "initializes non-CWD directory via env var" #v2.0
-    
-    it "displays an error for wrong number of arguments"
-    
+    end    
   end
   
   describe "help" do
@@ -72,8 +68,6 @@ EOT
   
   describe "list" do   
     before { taco.init! ; taco.write! issues }
-    
-    it "displays an error for wrong number of arguments"    
     
     it "lists issues" do
       r, out = ex 'list'
@@ -96,8 +90,6 @@ EOT
   
   describe "show" do    
     before { taco.init! ; taco.write! issues }
-        
-    it "displays an error for wrong number of arguments"
         
     it "displays an issue" do
       r, out = ex 'show %s' % issues[0].id
@@ -142,9 +134,7 @@ EOT
       r, out = ex 'show 1'
       r.should_not eq 0
       out.should =~ /Found several matching issues/
-    end
-    
-    it "shows the changelog" # possibly not by default, maybe require -v or -l
+    end    
   end
   
   describe "new" do
@@ -156,8 +146,6 @@ EOT
     end
     
     after { File.unlink(issue_path) rescue nil }
-    
-    it "displays an error for wrong number of arguments"
     
     it "creates a new issue from a file" do    
       issues_before = taco.list
@@ -172,8 +160,6 @@ EOT
       issue = taco.read(issue_id)
       attrs.each { |attr, value| issue.send(attr).should eq value }
     end
-  
-    it "complains when passing too many arguments to new"
   
     it "creates a new issue interactively" do
       r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_INPUT_PATH' => issue_path }
@@ -305,7 +291,7 @@ EOT
         end
       
         it "doesn't allow empty required fields" do
-          issue_text = "Summary:\nKind: KindNumber2\nStatus: Open\nOwner: bobdole\nsome description"
+          issue_text = "Summary:\nKind: KindNumber2\nStatus: Open\nOwner: bobdole\n---\nsome description"
           open(issue_path, 'w') { |f| f.write(issue_text) }
 
           r, out = ex 'new %s' % issue_path
@@ -322,7 +308,6 @@ EOT
           out.should include "Unknown Issue attribute: foo"                    
         end
                      
-        it "allows users to specify required fields" # v2.0
       end
     end
     
@@ -390,8 +375,6 @@ EOT
       input = open(EDITOR_WRITE_PATH) { |f| f.read }
       input.should include ('# ' + issue.changelog.map(&:to_s)[0])
     end
-        
-    it "displays an error for wrong number of arguments"
   end
   
   describe "changelog" do
@@ -535,7 +518,31 @@ EOT
       end   
     end
   end
-  
+    
+  describe "argument handling" do
+    it "displays an error for wrong number of arguments" do
+      r, out = ex 'init foo'
+      r.should_not eq 0
+      out.should include 'Unexpected arguments'
+
+      r, out = ex 'list foo'
+      r.should_not eq 0
+      out.should include 'Unexpected arguments'
+            
+      r, out = ex 'new foo bar'
+      r.should_not eq 0
+      out.should include 'Unexpected arguments'
+            
+      r, out = ex 'edit foo bar'
+      r.should_not eq 0
+      out.should include 'Unexpected arguments'
+                  
+      r, out = ex 'template foo'
+      r.should_not eq 0
+      out.should include 'Unexpected arguments'
+    end
+  end
+
   describe "comment" do
     it "adds comments to an existing issue"
   end
