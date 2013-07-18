@@ -306,12 +306,7 @@ EOT
           r, out = ex 'new %s' % issue_path
           r.should_not eq 0
           out.should include "Unknown Issue attribute: foo"                    
-<<<<<<< HEAD
-        end
-                     
-=======
         end                     
->>>>>>> local
       end
     end
     
@@ -378,11 +373,7 @@ EOT
 
       input = open(EDITOR_WRITE_PATH) { |f| f.read }
       input.should include ('# ' + issue.changelog.map(&:to_s)[0])
-<<<<<<< HEAD
     end
-=======
-    end        
->>>>>>> local
   end
   
   describe "changelog" do
