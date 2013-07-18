@@ -656,145 +656,145 @@ EOT
       end
 
       config
-    end
- 
+    end 
 end
 
-if __FILE__ == $PROGRAM_NAME
-  begin
-    cli = TacoCLI.new(Taco.new)
-  rescue TacoCLI::ParseError => e
-    puts "Parse error while reading .tacorc: #{e}"
-    exit 1
-  end
+# ########
+# main
+# ########
 
-  require 'commander/import'
-  
-  program :name, 'taco'
-  program :version, '0.9.0'
-  program :description, 'simple command line issue tracking'
+begin
+  cli = TacoCLI.new(Taco.new)
+rescue TacoCLI::ParseError => e
+  puts "Parse error while reading .tacorc: #{e}"
+  exit 1
+end
 
-  command :init do |c|
-    c.syntax = 'taco init'
-    c.summary = 'initialize a taco repo in the current directory'
-    c.description = 'Initialize a taco Issue repository in the current working directory'
-    c.action do |args, options|
-      begin
-        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
-        puts cli.init!
-      rescue Exception => e
-        puts "Error: #{e}"
-        exit 1
-      end
+require 'commander/import'
+
+program :name, 'taco'
+program :version, '1.0.0'
+program :description, 'simple command line issue tracking'
+
+command :init do |c|
+  c.syntax = 'taco init'
+  c.summary = 'initialize a taco repo in the current directory'
+  c.description = 'Initialize a taco Issue repository in the current working directory'
+  c.action do |args, options|
+    begin
+      # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
+      puts cli.init!
+    rescue Exception => e
+      puts "Error: #{e}"
+      exit 1
     end
   end
+end
 
-  command :list do |c|
-    c.syntax = 'taco list'
-    c.summary = 'list all issues in the repository'
-    c.description = 'List all taco Issues in the current repository'
-    c.action do |args, options|
-      begin
-        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0        
-        puts cli.list
-      rescue Exception => e
-        puts "Error: #{e}"
-        exit 1
-      end
+command :list do |c|
+  c.syntax = 'taco list'
+  c.summary = 'list all issues in the repository'
+  c.description = 'List all taco Issues in the current repository'
+  c.action do |args, options|
+    begin
+      # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0        
+      puts cli.list
+    rescue Exception => e
+      puts "Error: #{e}"
+      exit 1
     end
   end
-    
-  command :new do |c|
-    c.syntax = 'taco new [path_to_issue_template]'
-    c.summary = 'create a new Issue'
-    c.description = "Create a new Issue, interactively or from a template file.\n    Interactive mode launches $EDITOR with an Issue template."
-    c.example 'interactive Issue creation', 'taco new'
-    c.example 'Issue creation from a file', 'taco new /path/to/template'    
-    
-    c.option '--retry', nil, 'retry a failed Issue creation'
-    
-    c.action do |args, options|
-      begin
-        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") if args.size > 1
-        
-        begin
-          puts cli.new! args, { :retry => options.retry }
-        rescue Issue::Invalid => e
-          raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")      
-        end
-      rescue Exception => e
-        puts "Error: #{e}"        
-        exit 1
-      end
-    end  
-  end
+end
   
-  command :show do |c|
-    c.syntax = 'taco show <issue id0..issue idN>'
-    c.summary = 'display details for one or more Issues'
-    c.description = 'Display details for one or more Issues'
-    c.example 'show Issue by id', 'taco show 9f9c52ce1ced4ace878155c3a98cced0'
-    c.example 'show Issue by unique id fragment', 'taco show ce1ced'
-    c.example 'show two Issues by unique id fragment', 'taco show ce1ced bc2de4'
-    c.example 'show Issue with changelog', 'taco show --changelog 9f9c52'
-    
-    c.option '--changelog', nil, 'shows the changelog'
-    
-    c.action do |args, options|
+command :new do |c|
+  c.syntax = 'taco new [path_to_issue_template]'
+  c.summary = 'create a new Issue'
+  c.description = "Create a new Issue, interactively or from a template file.\n    Interactive mode launches $EDITOR with an Issue template."
+  c.example 'interactive Issue creation', 'taco new'
+  c.example 'Issue creation from a file', 'taco new /path/to/template'    
+  
+  c.option '--retry', nil, 'retry a failed Issue creation'
+  
+  c.action do |args, options|
+    begin
+      # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") if args.size > 1
+      
       begin
-        puts cli.show args, { :changelog => options.changelog }
-      rescue Exception => e
-        puts "Error: #{e}"
-        exit 1
+        puts cli.new! args, { :retry => options.retry }
+      rescue Issue::Invalid => e
+        raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")      
       end
-    end  
-  end
+    rescue Exception => e
+      puts "Error: #{e}"        
+      exit 1
+    end
+  end  
+end
 
-  command :edit do |c|
-    c.syntax = 'taco edit <issue_id>'
-    c.summary = 'edit an Issue'
-    c.description = 'Edit details for an Issue'
-    
-    c.option '--retry', nil, 'retry a failed Issue edit'
-    
-    c.action do |args, options|
+command :show do |c|
+  c.syntax = 'taco show <issue id0..issue idN>'
+  c.summary = 'display details for one or more Issues'
+  c.description = 'Display details for one or more Issues'
+  c.example 'show Issue by id', 'taco show 9f9c52ce1ced4ace878155c3a98cced0'
+  c.example 'show Issue by unique id fragment', 'taco show ce1ced'
+  c.example 'show two Issues by unique id fragment', 'taco show ce1ced bc2de4'
+  c.example 'show Issue with changelog', 'taco show --changelog 9f9c52'
+  
+  c.option '--changelog', nil, 'shows the changelog'
+  
+  c.action do |args, options|
+    begin
+      puts cli.show args, { :changelog => options.changelog }
+    rescue Exception => e
+      puts "Error: #{e}"
+      exit 1
+    end
+  end  
+end
+
+command :edit do |c|
+  c.syntax = 'taco edit <issue_id>'
+  c.summary = 'edit an Issue'
+  c.description = 'Edit details for an Issue'
+  
+  c.option '--retry', nil, 'retry a failed Issue edit'
+  
+  c.action do |args, options|
+    begin
+      # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 1
+      
       begin
-        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 1
-        
-        begin
-          puts cli.edit! args, { :retry => options.retry }
-        rescue Issue::Invalid => e
-          raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")      
-        end        
-      rescue Exception => e
-        puts "Error: #{e}"
-        exit 1
-      end
-    end  
-  end
+        puts cli.edit! args, { :retry => options.retry }
+      rescue Issue::Invalid => e
+        raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")      
+      end        
+    rescue Exception => e
+      puts "Error: #{e}"
+      exit 1
+    end
+  end  
+end
 
-  command :template do |c|
-    c.syntax = 'taco template'
-    c.summary = 'print the Issue template on stdout'
-    c.description = 'Print the Issue template on stdout'
-    
-    c.option '--defaults', nil, 'Print the Issue template with default values'
-    
-    c.action do |args, options|
-      begin
-        # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
-        
-        puts cli.template({ :defaults => options.defaults })
-      rescue Exception => e
-        puts "Error: #{e}"
-        exit 1
-      end
-    end  
-  end
-
+command :template do |c|
+  c.syntax = 'taco template'
+  c.summary = 'print the Issue template on stdout'
+  c.description = 'Print the Issue template on stdout'
+  
+  c.option '--defaults', nil, 'Print the Issue template with default values'
+  
+  c.action do |args, options|
+    begin
+      # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
+      
+      puts cli.template({ :defaults => options.defaults })
+    rescue Exception => e
+      puts "Error: #{e}"
+      exit 1
+    end
+  end  
 end
