@@ -374,6 +374,16 @@ EOT
       input = open(EDITOR_WRITE_PATH) { |f| f.read }
       input.should include ('# ' + issue.changelog.map(&:to_s)[0])
     end
+    
+    it "edits an issue with multi-line description" do
+      issue = taco.read issues[0].id      
+      old_description = issue.description
+      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
+      
+      issue = taco.read issue.id
+      
+      issue.description.should eq old_description + "\n\nthis is edited sparta!"      
+    end
   end
   
   describe "changelog" do

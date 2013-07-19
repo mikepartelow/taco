@@ -286,7 +286,7 @@ EOT
       footer =<<-EOT      
 # ChangeLog
 #
-#{changelog.map { |c| "# #{c.to_s}"}.join("\n")}      
+#{changelog.map { |c| %Q|# #{c.to_s.strip.gsub(/\n/, "\n# ")}| }.join("\n")}      
 EOT
     end
     

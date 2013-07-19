@@ -179,6 +179,24 @@ describe Issue do
         issue.kind.should eq old_kind        
         issue.updated_at.should_not eq issue.created_at
       end
+      
+      it "should perform a more complicated update" do
+        template =<<-EOT.strip
+Summary     : a summary
+Kind        : a kind
+Status      : a status
+Owner       : an owner
+# Everything past the --- is Issue Description
+---
+descr1
+descr2
+EOT
+        issue = Issue.from_template(template)
+        issue.description.should eq "descr1\ndescr2"
+      
+        issue.update_from_template!(template + "\ndescr3")
+        issue.description.should eq "descr1\ndescr2\ndescr3"
+      end
     end
       
     it "raises on non-attribute lines that aren't part of the description" do
@@ -406,9 +424,16 @@ Owner       : #{issue.owner}
 
 # ChangeLog
 #
-#{issue.changelog.map { |c| "# #{c.to_s}"}.join("\n")}
+#{issue.changelog.map { |c| %Q|# #{c.to_s.strip.gsub(/\n/, "\n# ")}| }.join("\n")}      
 EOT
+      # FIXME: copying the code from taco.rb to the spec (as with the changelog line above) is pretty lame.
+      #
       issue.to_template.should eq edit_issue_template
+    end
+    
+    it "should comment multi-line descriptions in the 'edit issue' template" do
+      issue.description = "line1\nline2\nline3"
+      issue.to_template.should include "# line2\n# line3"
     end
   end
   
