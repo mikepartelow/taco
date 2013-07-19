@@ -1,16 +1,25 @@
-PATH TO 1.5
+BUGS IN 1.0.0
 ---
+- BLOCKER: "foo : bar" in description should be allowed
+- BLOCKER: bug when editing multi-line description.  (165c55d07c38413da35592b5db6fcab7)
+- edit screen is a little cramped
+- long descriptions look ugly in changelog
+
+PATH TO 1.1
+---
+- CHANGELOG file
 - script that: changes version in taco.rb, changes version in taco.gemspec, builds the gem
-- ERB/html generator
 - "list" filters/queries
+- priority
+
+PATH TO 1.2
+---
 - comments
+- ri/rdoc
+- ERB/html generator
 - clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
    (or is that what Issue is supposed to be doing?)
 - 4.0 on codeclimate
-
-PATH TO 1.6
----
-- ri/rdoc
 
 ---------
 
