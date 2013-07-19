@@ -1,9 +1,9 @@
 BUGS IN 1.0.0
 ---
-- BLOCKER: "foo : bar" in description should be allowed
 - BLOCKER: bug when editing multi-line description.  (165c55d07c38413da35592b5db6fcab7)
 - edit screen is a little cramped
 - long descriptions look ugly in changelog
+- why do the specs print out "invalid command"? is it because i removed the __FILE__==$0?
 
 PATH TO 1.1
 ---

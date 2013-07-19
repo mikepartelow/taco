@@ -316,7 +316,7 @@ EOT
         next
       end
       
-      if line =~ /^(\w+)\s*:\s*(.*)$/
+      if !reading_description && line =~ /^(\w+)\s*:\s*(.*)$/
         key, value = $1.downcase.to_sym, $2.strip
         
         if SCHEMA_ATTRIBUTES.include?(key) && SCHEMA_ATTRIBUTES[key][:settable]

@@ -200,6 +200,28 @@ EOT
         Issue.from_template template
       }.to raise_error(ArgumentError)
     end
+    
+    it "is not disturbed by key:value pairs that appear in the description" do
+      template =<<-EOT.strip
+Summary     : a summary
+Kind        : a kind
+Status      : a status
+Owner       : an owner
+# Everything past the --- is Issue Description
+---
+this describes
+ the issue
+ as key: value
+key2:value2
+key3 :value3
+key4: value4
+key5 : value5
+keyx:
+:valuex
+   quite well
+EOT
+      Issue.from_template(template).description.count(':').should eq 7
+    end
   end
   
   describe "initialization" do
