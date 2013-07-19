@@ -110,9 +110,11 @@ Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
 Owner       : %{owner}
-# Everything below the --- is Issue Description
+
+# Everything between the --- lines is Issue Description
 ---
 %{description}
+---
 EOT
 
   class Invalid < Exception; end
@@ -255,7 +257,8 @@ Owner       : #{owner}
 EOT
 
     if opts[:changelog]
-      text << %Q|\n\n---\n#{changelog.map(&:to_s).join("\n")}|
+      changelog_str = changelog.map { |c| %Q|# #{c.to_s.strip.gsub(/\n/, "\n# ")}| }.join("\n")      
+      text << %Q|\n---\n\n#{changelog_str}|
     end
     
     text
@@ -311,8 +314,9 @@ EOT
       next if line =~ /^#/ || (!reading_description && line =~ /^\s*$/)
       
       if line =~ /^---$/
-        raise ArgumentError("Encountered extra --- delimiter on line #{index+1}") if reading_description
-        reading_description = true
+        # FIXME: this means that there can be multiple description blocks in the template!
+        #
+        reading_description = !reading_description
         next
       end
       

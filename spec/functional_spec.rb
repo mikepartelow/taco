@@ -379,10 +379,10 @@ EOT
       issue = taco.read issues[0].id      
       old_description = issue.description
       r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
-      
+
       issue = taco.read issue.id
-      
-      issue.description.should eq old_description + "\n\nthis is edited sparta!"      
+
+      issue.description.should eq old_description
     end
   end
   

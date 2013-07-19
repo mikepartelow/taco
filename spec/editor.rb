@@ -32,7 +32,7 @@ else
     else
       line = line
     end
-  end.join("\n")
+  end.map(&:rstrip).join("\n")
 
   unless appended_text = ENV['EDITOR_APPEND']
     appended_text = "\nappended text!"
