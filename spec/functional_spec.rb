@@ -33,9 +33,11 @@ Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
 Owner       : %{owner}
-# Everything below the --- is Issue Description
+
+# Everything between the --- lines is Issue Description
 ---
 %{description}
+---
 EOT
   }  
 
@@ -291,7 +293,7 @@ EOT
         end
       
         it "doesn't allow empty required fields" do
-          issue_text = "Summary:\nKind: KindNumber2\nStatus: Open\nOwner: bobdole\n---\nsome description"
+          issue_text = "Summary:\nKind: KindNumber2\nStatus: Open\nOwner: bobdole\n---\nsome description\n---"
           open(issue_path, 'w') { |f| f.write(issue_text) }
 
           r, out = ex 'new %s' % issue_path
@@ -378,11 +380,11 @@ EOT
     it "edits an issue with multi-line description" do
       issue = taco.read issues[0].id      
       old_description = issue.description
-      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!" }
+      r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "this is edited sparta!" }
 
       issue = taco.read issue.id
 
-      issue.description.should eq old_description
+      issue.description.should eq old_description + "\nthis is edited sparta!"
     end
   end
   
