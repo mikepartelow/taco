@@ -179,6 +179,25 @@ describe Issue do
         issue.kind.should eq old_kind        
         issue.updated_at.should_not eq issue.created_at
       end
+      
+      it "should perform a more complicated update" do
+        template =<<-EOT.strip
+Summary     : a summary
+Kind        : a kind
+Status      : a status
+Owner       : an owner
+# Everything between the --- lines is Issue Description
+---
+descr1
+descr2
+---
+EOT
+        issue = Issue.from_template(template)
+        issue.description.should eq "descr1\ndescr2"
+      
+        issue.update_from_template!(template.gsub(/descr2\n---/m, "descr2\ndescr3"))
+        issue.description.should eq "descr1\ndescr2\ndescr3"
+      end
     end
       
     it "raises on non-attribute lines that aren't part of the description" do
@@ -190,11 +209,12 @@ Kind        : a kind
 happening here
 Status      : a status
 Owner       : an owner
-# Everything past the --- is Issue Description
+# Everything between the --- lines is Issue Description
 ---
 this describes
  the issue
    quite well
+---
 EOT
       expect {
         Issue.from_template template
@@ -207,7 +227,7 @@ Summary     : a summary
 Kind        : a kind
 Status      : a status
 Owner       : an owner
-# Everything past the --- is Issue Description
+# Everything between the --- lines is Issue Description
 ---
 this describes
  the issue
@@ -219,8 +239,25 @@ key5 : value5
 keyx:
 :valuex
    quite well
+---
 EOT
       Issue.from_template(template).description.count(':').should eq 7
+    end
+    
+    it "strips trailing whitespace from description" do
+      template =<<-EOT
+Summary     : a summary
+Kind        : a kind
+Status      : a status
+Owner       : an owner
+# Everything between the --- lines is Issue Description
+---
+l1
+l2
+
+---
+EOT
+      Issue.from_template(template).description.should_not end_with("\n")
     end
   end
   
@@ -363,7 +400,7 @@ Status      : #{issue.status}
 Owner       : #{issue.owner}
 
 ---
-#{issue.description}      
+#{issue.description}
 EOT
       issue.to_s.should eq text
     end
@@ -379,9 +416,11 @@ Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
 Owner       : %{owner}
-# Everything below the --- is Issue Description
+
+# Everything between the --- lines is Issue Description
 ---
 %{description}
+---
 EOT
       Issue.new.to_template.should eq new_issue_template
     end
@@ -400,15 +439,24 @@ Summary     : #{issue.summary}
 Kind        : #{issue.kind}
 Status      : #{issue.status}
 Owner       : #{issue.owner}
-# Everything below the --- is Issue Description
+
+# Everything between the --- lines is Issue Description
 ---
 #{issue.description}
+---
 
 # ChangeLog
 #
-#{issue.changelog.map { |c| "# #{c.to_s}"}.join("\n")}
+#{issue.changelog.map { |c| %Q|# #{c.to_s.strip.gsub(/\n/, "\n# ")}| }.join("\n")}      
 EOT
+      # FIXME: copying the code from taco.rb to the spec (as with the changelog line above) is pretty lame.
+      #
       issue.to_template.should eq edit_issue_template
+    end
+    
+    it "should comment multi-line descriptions in the 'edit issue' template" do
+      issue.description = "line1\nline2\nline3"
+      issue.to_template.should include "# line2\n# line3"
     end
   end
   
@@ -506,10 +554,12 @@ Owner       : #{issue.owner}
 
 ---
 #{issue.description}
-
 ---
-#{issue.changelog.map(&:to_s).join("\n")}
+
+#{issue.changelog.map { |c| %Q|# #{c.to_s.strip.gsub(/\n/, "\n# ")}| }.join("\n")}      
 EOT
+      # FIXME: copying the code from taco.rb to the spec (as with the changelog line above) is pretty lame.
+      #
   
       issue.to_s(:changelog => true).should eq text
     end
