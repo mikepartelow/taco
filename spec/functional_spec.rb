@@ -70,7 +70,7 @@ EOT
   
   describe "list" do   
     before { taco.init! ; taco.write! issues }
-    
+
     it "lists issues" do
       r, out = ex 'list'
       r.should eq 0
@@ -569,7 +569,7 @@ EOT
       FactoryGirl.build(:issue, :summary => 'summary3', :kind => 'kind3', :owner => 'owner3', :description => 'descr3'),      
     ] }
     
-    before { FileUtils.rm_rf(TMP_PATH); taco.init! ; taco.write! issues }    
+    before { taco.init! ; taco.write! issues }    
     after { FileUtils.rm_rf(TMP_PATH) }
   
     it "filters by attribute" do

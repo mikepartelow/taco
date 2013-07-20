@@ -151,11 +151,15 @@ EOT
     @new
   end
   
-  def self.set_allowed_values(attrs)
-    attrs.each do |attr, values|
-      raise ArgumentError.new("Unknown Issue attributes: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr      
+  def self.set_allowed_values!(attrs=nil)
+    if attrs.nil?
+      SCHEMA_ATTRIBUTES.each { |attr, data| data.delete(:allowed_values) }
+    else
+      attrs.each do |attr, values|
+        raise ArgumentError.new("Unknown Issue attributes: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr      
       
-      SCHEMA_ATTRIBUTES[attr][:allowed_values] = values
+        SCHEMA_ATTRIBUTES[attr][:allowed_values] = values
+      end
     end
   end
   
@@ -579,7 +583,7 @@ EOT
     @rc_path = File.join(@taco.home, RC_NAME)
     @config = parse_rc
     
-    Issue.set_allowed_values @config[:allowed]
+    Issue.set_allowed_values! @config[:allowed]
   end
   
   def init!
@@ -655,7 +659,6 @@ EOT
         end
       end
       
-      puts @rc_path
       if File.exist? @rc_path
         open(@rc_path) do |f|
           f.readlines.each_with_index do |line, index|

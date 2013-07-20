@@ -83,7 +83,7 @@ describe Issue do
     end
 
     it "should allow only particular values for checked fields" do
-      Issue.set_allowed_values :kind => [ 'Defect', 'Feature Request' ]
+      Issue.set_allowed_values! :kind => [ 'Defect', 'Feature Request' ]
       
       issue.kind = 'Defect'
       issue.should be_valid
@@ -93,11 +93,15 @@ describe Issue do
       
       issue.kind = 'Carmen Miranda'
       issue.should_not be_valid
+      
+      Issue.set_allowed_values!
+      issue.kind = 'Carmen Miranda'
+      issue.should be_valid
     end
     
     it "should raise ArgumentError when setting allowed values for unrecognized attributes" do
       expect {
-        Issue.set_allowed_values :foo => [ 'bar', 'baz' ]
+        Issue.set_allowed_values! :foo => [ 'bar', 'baz' ]
       }.to raise_error(ArgumentError)
     end
     
