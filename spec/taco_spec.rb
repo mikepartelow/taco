@@ -186,7 +186,21 @@ describe Taco do
         expect {
           taco.list
         }.to raise_error(Issue::Invalid)        
-      end        
+      end  
+      
+      describe "filters" do
+        let(:issues) { [
+          FactoryGirl.build(:issue, :summary => 'summary1', :kind => 'kind1', :owner => 'owner1', :description => 'descr1'),
+          FactoryGirl.build(:issue, :summary => 'summary2', :kind => 'kind2', :owner => 'owner2', :description => 'descr2'),
+          FactoryGirl.build(:issue, :summary => 'summary3', :kind => 'kind3', :owner => 'owner3', :description => 'descr3'),      
+        ] }
+
+        before { taco.write! issues }
+        
+        it "filters Issues" do
+          taco.list(:filters => [ 'kind:kind2' ]).should eq [ issues[1] ]
+        end
+      end      
     end
   end
 end

@@ -459,11 +459,25 @@ class Taco
   end
 
   def list(opts={})
+    filter_match = if opts.fetch(:filters, []).size > 0
+      return_ifs = opts[:filters].map do |filter|
+        attr, val = filter.split(':')
+        %Q|next i if i.send("#{attr}") == "#{val}"|
+      end
+      
+      # FIXME: eval-ing user input? madness!
+      eval "Proc.new { |i| #{return_ifs.join(';')} }"
+    else
+      nil
+    end
+    
     ids = Dir.glob("#{@home}/*")
     
     ids.map do |name|
       id = File.basename name
       issue = Issue.from_json(open(name) { |f| f.read })
+
+      next unless filter_match.nil? || filter_match.call(issue)
       
       raise Issue::Invalid.new("Issue ID does not match filename: #{issue.id} != #{id}") unless issue.id == id
       
@@ -477,7 +491,7 @@ class Taco
       else
         issue
       end
-    end.sort_by { |thing| opts[:short_ids] ? thing[0] : thing}
+    end.reject(&:nil?).sort_by { |thing| opts[:short_ids] ? thing[0] : thing}
   end
 end
 
@@ -574,8 +588,8 @@ EOT
     out + "\nPlease edit the config file at #{@rc_path}"
   end
 
-  def list
-    the_list = @taco.list(:short_ids => true).map { |issue, short_id| "#{short_id} : #{issue.summary}" }
+  def list(args)
+    the_list = @taco.list(:short_ids => true, :filters => args).map { |issue, short_id| "#{short_id} : #{issue.summary}" }
     return "Found no issues." unless the_list.size > 0
     the_list.join("\n")
   end
@@ -641,6 +655,7 @@ EOT
         end
       end
       
+      puts @rc_path
       if File.exist? @rc_path
         open(@rc_path) do |f|
           f.readlines.each_with_index do |line, index|
@@ -703,8 +718,10 @@ command :list do |c|
   c.action do |args, options|
     begin
       # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0        
-      puts cli.list
+      unless args.all? { |arg| arg =~ /\w+:\w+/ }
+        raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}")
+      end
+      puts cli.list args
     rescue Exception => e
       puts "Error: #{e}"
       exit 1

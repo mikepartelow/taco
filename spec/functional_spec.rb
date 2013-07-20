@@ -137,6 +137,9 @@ EOT
       r.should_not eq 0
       out.should =~ /Found several matching issues/
     end    
+    
+    it "displays all issues"
+    it "displays all issues that match a filter"
   end
   
   describe "new" do
@@ -187,6 +190,8 @@ EOT
 
     describe "tacorc" do
       describe "parse failure" do
+        after { FileUtils.rm_rf(TMP_PATH) }
+        
         it "handles unknown defaults" do
           open(TACORC_PATH, 'w') { |f| f.write("DefaultFoo = Bar") }
           r, out = ex 'list'
@@ -247,7 +252,7 @@ EOT
         
         r, out = ex 'init'
         r.should eq 0
-        File.exists?(TACORC_PATH).should be_true
+        File.exists?(TACORC_PATH).should be_true        
       end
     end
     
@@ -258,9 +263,8 @@ DefaultKind = KindNumber2
 EOT
       }
       
-      before do
-        open(TACORC_PATH, 'w') { |f| f.write(tacorc) }        
-      end
+      before { open(TACORC_PATH, 'w') { |f| f.write(tacorc) } }
+      after { FileUtils.rm_rf(TMP_PATH) }      
       
       describe "default values" do
         it "sets default values for issue fields" do  
@@ -410,6 +414,8 @@ EOT
       open(TACORC_PATH, 'w') { |f| f.write(tacorc) }        
     end
     
+    after { FileUtils.rm_rf(TMP_PATH) }    
+    
     it "displays the Issue template" do
       r, out = ex 'template'
       r.should eq 0
@@ -429,6 +435,8 @@ EOT
       taco.write! issues      
       open(TACORC_PATH, 'w') { |f| f.write("Kind = NotBogus1, NotBogus2") }
     end
+    
+    after { FileUtils.rm_rf(TMP_PATH) }
     
     describe "new" do
       it "allows editor retry after failed validation in interactive mode" do
@@ -552,6 +560,26 @@ EOT
       r.should_not eq 0
       out.should include 'Unexpected arguments'
     end
+  end
+  
+  describe "list filters" do
+    let(:issues) { [
+      FactoryGirl.build(:issue, :summary => 'summary1', :kind => 'kind1', :owner => 'owner1', :description => 'descr1'),
+      FactoryGirl.build(:issue, :summary => 'summary2', :kind => 'kind2', :owner => 'owner2', :description => 'descr2'),
+      FactoryGirl.build(:issue, :summary => 'summary3', :kind => 'kind3', :owner => 'owner3', :description => 'descr3'),      
+    ] }
+    
+    before { FileUtils.rm_rf(TMP_PATH); taco.init! ; taco.write! issues }    
+    after { FileUtils.rm_rf(TMP_PATH) }
+  
+    it "filters by attribute" do
+      r, out = ex 'list kind:kind2'
+      r.should eq 0
+      out.should include 'summary2'      
+    end
+    
+    it "filters by attribute with spaces"
+    it "filters by attribute with wildcard"
   end
 
   describe "comment" do
