@@ -616,6 +616,11 @@ EOT
   end
   
   def show(args, opts)
+    if opts[:all]
+      filters = args.select { |arg| arg.include? ':' }
+      args = @taco.list(:filters => filters).map(&:id)
+    end
+    
     args.map { |id| @taco.read(id).to_s(opts) }.join("\n\n")
   end
   
@@ -766,12 +771,14 @@ command :show do |c|
   c.example 'show Issue by unique id fragment', 'taco show ce1ced'
   c.example 'show two Issues by unique id fragment', 'taco show ce1ced bc2de4'
   c.example 'show Issue with changelog', 'taco show --changelog 9f9c52'
+  c.example "show all Issues with 'kind' value 'kind2'", 'taco show --all kind:kind2'
   
   c.option '--changelog', nil, 'shows the changelog'
+  c.option '--all', nil, 'show all Issues'
   
   c.action do |args, options|
     begin
-      puts cli.show args, { :changelog => options.changelog }
+      puts cli.show args, { :changelog => options.changelog, :all => options.all }
     rescue Exception => e
       puts "Error: #{e}"
       exit 1

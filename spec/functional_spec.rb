@@ -138,8 +138,27 @@ EOT
       out.should =~ /Found several matching issues/
     end    
     
-    it "displays all issues"
-    it "displays all issues that match a filter"
+    it "displays all issues" do
+      r, out = ex 'show --all'
+      r.should eq 0
+      issues.each { |issue| out.should include issue.id }
+    end
+    
+    it "displays all issues that match a filter" do
+      kind2_issues = [ FactoryGirl.build(:issue, :kind => 'kind2'), FactoryGirl.build(:issue, :kind => 'kind2' ) ]
+      taco.write! kind2_issues
+      
+      r, out = ex 'show --all kind:kind2'
+      r.should eq 0
+      issues.each { |issue| out.should_not include issue.id }
+      kind2_issues.each { |issue| out.should include issue.id }      
+    end
+    
+    it "does not allow filters without -all"    
+    it "does not allow mixing of --all with issue ids"
+    it "does not allow mixing of issue ids with filters"
+    it "filters by attribute with spaces"
+    it "filters by attribute with wildcard"        
   end
   
   describe "new" do
@@ -579,7 +598,7 @@ EOT
     end
     
     it "filters by attribute with spaces"
-    it "filters by attribute with wildcard"
+    it "filters by attribute with wildcard"    
   end
 
   describe "comment" do
