@@ -464,13 +464,13 @@ class Taco
 
   def list(opts={})
     filter_match = if opts.fetch(:filters, []).size > 0
-      return_ifs = opts[:filters].map do |filter|
+      conditions = opts[:filters].map do |filter|
         attr, val = filter.split(':')
-        %Q|next i if i.send("#{attr}") == "#{val}"|
-      end
+        %Q|i.send("#{attr}") == "#{val}"|
+      end.join ' && '
       
       # FIXME: eval-ing user input? madness!
-      eval "Proc.new { |i| #{return_ifs.join(';')} }"
+      eval "Proc.new { |i| #{conditions} }"
     else
       nil
     end
@@ -723,6 +723,7 @@ command :list do |c|
   c.syntax = 'taco list'
   c.summary = 'list all issues in the repository'
   c.description = 'List all taco Issues in the current repository'
+  
   c.action do |args, options|
     begin
       # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
@@ -772,6 +773,7 @@ command :show do |c|
   c.example 'show two Issues by unique id fragment', 'taco show ce1ced bc2de4'
   c.example 'show Issue with changelog', 'taco show --changelog 9f9c52'
   c.example "show all Issues with 'kind' value 'kind2'", 'taco show --all kind:kind2'
+  c.example "show all Issues with 'kind' value 'kind2' and 'owner' value 'mike'", 'taco show --all kind:kind2 owner:mike'
   
   c.option '--changelog', nil, 'shows the changelog'
   c.option '--all', nil, 'show all Issues'
