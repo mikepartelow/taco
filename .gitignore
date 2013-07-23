@@ -1,3 +1,4 @@
 .taco/*
 .DS_Store
 ._*
+gem/*.gem

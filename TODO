@@ -8,6 +8,7 @@ PATH TO 1.1
 - script that: changes version in taco.rb, changes version in taco.gemspec, builds the gem
 - "list" filters/queries
 - priority
+- taco push : add new issues to git, commit them, and push them -- kind of plugin-y, rather than taco-core, yeah?
 
 PATH TO 1.2
 ---
