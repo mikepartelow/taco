@@ -14,6 +14,11 @@ task :release, [:version] do |t, args|
   new_version = args[:version]
   
   abort "Error: expecting X.Y.Z for version" unless new_version =~ /^\d+\.\d+\.\d+$/
+
+  puts "Modifying taco.rb"
+  old_taco_rb = open('taco.rb') { |f| f.read }
+  new_taco_rb = old_taco_rb.gsub /program :version, '\d+\.\d+\.\d+'/, "program :version, '#{new_version}'"
+  open('taco.rb', 'w') { |f| f.write(new_taco_rb) }
   
   puts "Building gem for version: #{new_version}"
   gemspec = open(GEMSPEC_PATH) { |f| f.read }
