@@ -646,6 +646,12 @@ EOT
       Issue::TEMPLATE.gsub(/%{.*?}/, '').strip
     end
   end
+  
+  def push(opts)
+    opts[:message] ||= 'turn and face the strange'
+    cmd = "git add . && git commit -am '#{opts[:message]}' && git push"
+    system(cmd)
+  end
       
   private  
     def parse_rc
@@ -825,6 +831,26 @@ command :template do |c|
       raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
       
       puts cli.template({ :defaults => options.defaults })
+    rescue Exception => e
+      puts "Error: #{e}"
+      exit 1
+    end
+  end  
+end
+
+command :push do |c|
+  c.syntax = 'taco push'
+  c.summary = 'Add, commit, and push all changes to git remote.'
+  c.description = 'Shortcut for: git add . && git commit -a && git push'
+  
+  c.option '--message STRING', String, 'Override the default commit message.'
+  
+  c.action do |args, options|
+    begin
+      # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
+      
+      puts cli.push({ :message => options.message })
     rescue Exception => e
       puts "Error: #{e}"
       exit 1

@@ -4,20 +4,19 @@ BUGS IN 1.0.0
 
 PATH TO 1.1
 ---
-- CHANGELOG file
-- script that: changes version in taco.rb, changes version in taco.gemspec, builds the gem
-- "list" filters/queries
-- priority
+- priority: int?
 - taco push : add new issues to git, commit them, and push them -- kind of plugin-y, rather than taco-core, yeah?
 
 PATH TO 1.2
 ---
+- CHANGELOG file
 - comments
 - ri/rdoc
 - ERB/html generator
 - clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
    (or is that what Issue is supposed to be doing?)
 - 4.0 on codeclimate
+- user-specifiable (via .tacorc and CL switches) column list for "taco list"
 
 ---------
 
