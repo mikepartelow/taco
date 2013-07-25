@@ -706,7 +706,7 @@ end
 require 'commander/import'
 
 program :name, 'taco'
-program :version, '1.1.1'
+program :version, '1.1.2'
 program :description, 'simple command line issue tracking'
 
 command :init do |c|
