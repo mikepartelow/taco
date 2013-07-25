@@ -7,6 +7,7 @@ FactoryGirl.define do
     kind 'Defect'
     status 'Open'
     owner 'bobdole'
+    priority 3
     
     description { FactoryGirl.generate(:unique_multi_line_string) }
   end

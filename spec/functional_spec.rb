@@ -32,6 +32,7 @@ describe "Command Line Interface" do
 Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
+Priority    : %{priority}
 Owner       : %{owner}
 
 # Everything between the --- lines is Issue Description
@@ -278,6 +279,7 @@ EOT
     describe "with tacorc" do
       let(:tacorc) { <<-EOT.strip
 Kind = KindNumber1, KindNumber2, KindNumber3
+Priority = 1, 2, 3, 4, 5
 DefaultKind = KindNumber2
 EOT
       }
@@ -316,7 +318,7 @@ EOT
         end
       
         it "doesn't allow empty required fields" do
-          issue_text = "Summary:\nKind: KindNumber2\nStatus: Open\nOwner: bobdole\n---\nsome description\n---"
+          issue_text = "Summary:\nKind: KindNumber2\nStatus: Open\nOwner: bobdole\nPriority: 3\n---\nsome description\n---"
           open(issue_path, 'w') { |f| f.write(issue_text) }
 
           r, out = ex 'new %s' % issue_path
@@ -331,7 +333,16 @@ EOT
           r, out = ex 'new %s' % issue_path
           r.should_not eq 0
           out.should include "Unknown Issue attribute: foo"                    
-        end                     
+        end   
+        
+        it "constrains the Fixnum field priority" do
+          issue_text = "Priority: 99\nSummary: foo\nKind: KindNumber2\nStatus: Open\nOwner: bobdole\n---\nsome description\n---"
+          open(issue_path, 'w') { |f| f.write(issue_text) }
+
+          r, out = ex 'new %s' % issue_path
+          r.should_not eq 0
+          out.should include "99 is not an allowed value for Priority"                    
+        end                  
       end
     end
     

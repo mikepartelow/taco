@@ -9,6 +9,7 @@ describe Issue do
                              :kind => 'Defect', 
                              :status => 'Open',
                              :owner => 'bobdole',
+                             :priority => 3,
                              :description => "a description\nin two lines", } }
   let(:issue) { Issue.new valid_attributes }
   let(:template) { Issue::TEMPLATE }  
@@ -24,6 +25,7 @@ describe Issue do
     it { should respond_to :kind }
     it { should respond_to :status }
     it { should respond_to :owner }
+    it { should respond_to :priority }
 
     it { should respond_to :created_at }
     it { should_not respond_to :created_at= }
@@ -44,6 +46,7 @@ describe Issue do
     it { should respond_to :kind= }
     it { should respond_to :status= }
     it { should respond_to :owner= }
+    it { should respond_to :priority= }
 
     it { should respond_to :description= }
     
@@ -73,30 +76,52 @@ describe Issue do
     specify { Issue.new(valid_attributes.merge({:description => "multi\n\n line\n\ntest4"})).should be_valid }
 
     describe "type checking" do
-      specify { expect { Issue.new(valid_attributes.merge({:created_at => "abc123"})) }.to raise_error(ArgumentError) }
-      specify { expect { Issue.new(valid_attributes.merge({:created_at => 123})) }.to raise_error(ArgumentError) }
-      specify { expect { Issue.new(valid_attributes.merge({:created_at => nil})) }.to raise_error(ArgumentError) }
+      specify { expect { Issue.new(valid_attributes.merge({:created_at => "abc123"})) }.to raise_error(TypeError) }
+      specify { expect { Issue.new(valid_attributes.merge({:created_at => 123})) }.to raise_error(TypeError) }
+      specify { expect { Issue.new(valid_attributes.merge({:created_at => nil})) }.to raise_error(TypeError) }
       
-      specify { expect { Issue.new(valid_attributes.merge({:summary => Time.now})) }.to raise_error(ArgumentError) }
-      specify { expect { Issue.new(valid_attributes.merge({:summary => 123})) }.to raise_error(ArgumentError) }
-      specify { expect { Issue.new(valid_attributes.merge({:summary => nil})) }.to raise_error(ArgumentError) }
+      specify { expect { Issue.new(valid_attributes.merge({:summary => Time.now})) }.to raise_error(TypeError) }
+      specify { expect { Issue.new(valid_attributes.merge({:summary => 123})) }.to raise_error(TypeError) }
+      specify { expect { Issue.new(valid_attributes.merge({:summary => nil})) }.to raise_error(TypeError) }
+      
+      specify { expect { Issue.new(valid_attributes.merge({:priority => '1x'})) }.to raise_error(TypeError) }
     end
+    
+    describe "set_allowed_values!" do
+      after { Issue.set_allowed_values! }
+      
+      it "should allow only particular values for checked fields" do
+        Issue.set_allowed_values! :kind => [ 'Defect', 'Feature Request' ], :priority => [ 1, 2, 3, 4 ]
+      
+        issue.kind = 'Defect'
+        issue.should be_valid
 
-    it "should allow only particular values for checked fields" do
-      Issue.set_allowed_values! :kind => [ 'Defect', 'Feature Request' ]
-      
-      issue.kind = 'Defect'
-      issue.should be_valid
+        issue.kind = 'Feature Request'
+        issue.should be_valid
 
-      issue.kind = 'Feature Request'
-      issue.should be_valid
+        issue.kind = 'Carmen Miranda'
+        issue.should_not be_valid
       
-      issue.kind = 'Carmen Miranda'
-      issue.should_not be_valid
+        issue.kind = 'Defect'
+        issue.should be_valid
       
-      Issue.set_allowed_values!
-      issue.kind = 'Carmen Miranda'
-      issue.should be_valid
+        issue.priority = 9
+        issue.should_not be_valid
+      
+        issue.priority = 3
+        issue.should be_valid
+      
+        Issue.set_allowed_values!
+        issue.kind = 'Carmen Miranda'
+        issue.should be_valid
+      end
+    
+      it "should convert Strings to Fixnums as appropriate in set_allowed_values!" do
+        Issue.set_allowed_values! :priority => %w|1 2 3|
+      
+        issue.priority = 2
+        issue.should be_valid
+      end
     end
     
     it "should raise ArgumentError when setting allowed values for unrecognized attributes" do
@@ -189,6 +214,7 @@ describe Issue do
 Summary     : a summary
 Kind        : a kind
 Status      : a status
+Priority    : 2
 Owner       : an owner
 # Everything between the --- lines is Issue Description
 ---
@@ -212,6 +238,7 @@ weird
 Kind        : a kind
 happening here
 Status      : a status
+Priority    : 3
 Owner       : an owner
 # Everything between the --- lines is Issue Description
 ---
@@ -230,6 +257,7 @@ EOT
 Summary     : a summary
 Kind        : a kind
 Status      : a status
+Priority    : 3
 Owner       : an owner
 # Everything between the --- lines is Issue Description
 ---
@@ -253,6 +281,7 @@ EOT
 Summary     : a summary
 Kind        : a kind
 Status      : a status
+Priority    : 3
 Owner       : an owner
 # Everything between the --- lines is Issue Description
 ---
@@ -309,8 +338,16 @@ EOT
         next if attr == :id
         issue.send(attr).class.should eq valid_attributes[attr].class
         issue.send(attr).should eq valid_attributes[attr]
-      end
-    end    
+      end            
+    end  
+    
+    it "changes strings to Fixnums as appropriate" do  
+      attrs = valid_attributes.dup
+      attrs[:priority] = attrs[:priority].to_s
+      
+      issue = Issue.new(attrs)
+      issue.should be_valid 
+    end
     
     it "initializes the changelog from arguments" do
       change = Change.new(:created_at => Time.new(2007, 5, 23, 5, 23, 5), :attribute => :summary, :new_value => "whatever")
@@ -324,6 +361,7 @@ EOT
     describe "read" do
       specify { issue.summary.should eq valid_attributes[:summary] }
       specify { issue.kind.should eq valid_attributes[:kind] }
+      specify { issue.priority.should eq valid_attributes[:priority] }
       specify { issue.created_at.should eq valid_attributes[:created_at] }
       specify { issue.updated_at.should eq valid_attributes[:updated_at] }
       specify { issue.description.should eq valid_attributes[:description] }
@@ -377,9 +415,10 @@ EOT
       end
       
       describe "type checking" do
-        specify { expect { issue.summary = nil }.to raise_error(ArgumentError) }        
-        specify { expect { issue.summary = Time.now }.to raise_error(ArgumentError) }        
-        specify { expect { issue.summary = 123 }.to raise_error(ArgumentError) }
+        specify { expect { issue.summary = nil }.to raise_error(TypeError) }        
+        specify { expect { issue.summary = Time.now }.to raise_error(TypeError) }        
+        specify { expect { issue.summary = 123 }.to raise_error(TypeError) }
+        specify { expect { issue.priority = '123x' }.to raise_error(TypeError) }
       end
       
       describe "cleanup" do
@@ -401,6 +440,7 @@ Updated At  : #{date(issue.updated_at)}
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
 Status      : #{issue.status}
+Priority    : #{issue.priority}
 Owner       : #{issue.owner}
 
 ---
@@ -419,6 +459,7 @@ EOT
 Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
+Priority    : %{priority}
 Owner       : %{owner}
 
 # Everything between the --- lines is Issue Description
@@ -442,6 +483,7 @@ EOT
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
 Status      : #{issue.status}
+Priority    : #{issue.priority}
 Owner       : #{issue.owner}
 
 # Everything between the --- lines is Issue Description
@@ -554,6 +596,7 @@ Updated At  : #{date(issue.updated_at)}
 Summary     : #{issue.summary}
 Kind        : #{issue.kind}
 Status      : #{issue.status}
+Priority    : #{issue.priority}
 Owner       : #{issue.owner}
 
 ---

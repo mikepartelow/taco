@@ -1,13 +1,9 @@
-BUGS IN 1.0.0
+BUGS
 ---
 - why do the specs print out "invalid command"? is it because i removed the __FILE__==$0?
+- git tag as part of "rake release"
 
-PATH TO 1.1
----
-- priority: int?
-- taco push : add new issues to git, commit them, and push them -- kind of plugin-y, rather than taco-core, yeah?
-
-PATH TO 1.2
+FEATURES
 ---
 - CHANGELOG file
 - comments
@@ -17,12 +13,14 @@ PATH TO 1.2
    (or is that what Issue is supposed to be doing?)
 - 4.0 on codeclimate
 - user-specifiable (via .tacorc and CL switches) column list for "taco list"
+- don't report validation problems one at a time, report all of them at once
+- user-specified Issue attributes via .tacorc
+- Text vs. String type: one has newlines, the other doesn't
 
 ---------
 
 TODO:
 - store schema version in each issue
-- query by status
 - arguments to 'new': taco new component:foo kind:bar summary:'ick thud wank'
 - simplified editing: taco edit 123abc summary:'change only this one field'
 - should taco config and issues go into different directories?
@@ -37,6 +35,3 @@ TODO:
                       perhaps a different dsl for taco vs user attrs: id vs kind
 
 - some way of constraining Change :attribute to Issue::SCHEMA_ATTRIBUTES
-
-- don't report validation problems one at a time, report all of them at once
-- user-specified Issue attributes via .tacorc

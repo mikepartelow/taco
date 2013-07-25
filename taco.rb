@@ -101,6 +101,9 @@ class Issue
     :kind           => { :class => String,    :required => true,    :settable => true },
     :status         => { :class => String,    :required => true,    :settable => true },
     :owner          => { :class => String,    :required => true,    :settable => true },
+    
+    :priority       => { :class => Fixnum,    :required => true,    :settable => true },
+    
     :description    => { :class => String,    :required => true,    :settable => true },
   }
   
@@ -109,6 +112,7 @@ class Issue
 Summary     : %{summary}
 Kind        : %{kind}
 Status      : %{status}
+Priority    : %{priority}
 Owner       : %{owner}
 
 # Everything between the --- lines is Issue Description
@@ -158,6 +162,10 @@ EOT
       attrs.each do |attr, values|
         raise ArgumentError.new("Unknown Issue attributes: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr      
       
+        if SCHEMA_ATTRIBUTES[attr][:class] == Fixnum
+          values.map!(&:to_i)
+        end
+        
         SCHEMA_ATTRIBUTES[attr][:allowed_values] = values
       end
     end
@@ -174,18 +182,36 @@ EOT
       case cfg[:class].to_s # can't case on cfg[:class], because class of cfg[:class] is always Class :-)
       when 'Time'
         unless attrs[attr].is_a?(String) || attrs[attr].is_a?(Time)
-          raise ArgumentError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
+          raise TypeError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
         end
         
-        t = attrs[attr].is_a?(String) ? Time.parse(attrs[attr]) : attrs[attr]
+        t = if attrs[attr].is_a?(String)
+          begin
+            Time.parse(attrs[attr])
+          rescue ArgumentError => e
+            raise TypeError.new(e.to_s)
+          end
+        else
+          attrs[attr]
+        end
         attrs[attr] = timescrub(t)
       when 'String'
         unless attrs[attr].is_a?(String)
-          raise ArgumentError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
+          raise TypeError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
         end
          
         attrs[attr] && attrs[attr].strip!
-      end
+      when 'Fixnum'
+        unless attrs[attr].is_a?(Fixnum) || attrs[attr].is_a?(String)
+          raise TypeError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
+        end          
+        
+        if attrs[attr].is_a?(String)
+          i = attrs[attr].to_i
+          raise TypeError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}") unless i.to_s == attrs[attr]
+          attrs[attr] = i
+        end
+      end      
     end 
         
     attrs   
@@ -254,6 +280,7 @@ Updated At  : #{date(updated_at)}
 Summary     : #{summary}
 Kind        : #{kind}
 Status      : #{status}
+Priority    : #{priority}
 Owner       : #{owner}
 
 ---
@@ -383,9 +410,9 @@ EOT
           raise Issue::Invalid.new("Empty string is not allowed for #{attr}")
         end
       end
-    rescue Issue::Invalid
+    rescue Issue::Invalid => e
       return false unless opts[:raise]
-      raise
+      raise e
     end
     
     true

@@ -26,6 +26,8 @@ else
     if line =~ /^(\w+)\s*:\s*$/
       if value = ENV["EDITOR_FIELD_#{$1.upcase}"]
         "#{$1} : #{value}"
+      elsif $1 == 'Priority'
+        "#{$1} : 3"
       else
         "#{$1} : hello there"
       end
@@ -48,5 +50,6 @@ else
   end.map(&:rstrip).join("\n")  
 end
 
+open("/tmp/taco.f.spec", 'w') { |f| f.write(text) }
 open(template_path, 'w') { |f| f.write(text) }
 exit 0
