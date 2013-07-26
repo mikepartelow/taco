@@ -1,7 +1,7 @@
 require 'taco'
 require 'fileutils'
 
-TACO_PATH = File.realdirpath "./taco.rb"
+TACO_PATH = File.realdirpath "./bin/taco"
 TMP_PATH = File.realdirpath "./spec/tmp"
 TACORC_PATH = File.join(TMP_PATH, '.taco', '.tacorc')
 EDITOR_PATH = File.realdirpath "./spec/editor.rb"

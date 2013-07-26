@@ -34,6 +34,7 @@ FEATURES
   - can we do something neat like generate and source it as part of init?  will have to re-source it for each new term session
 
 - bulk editing: taco edit -a or taco edit kind:Defect
+- jquery tablesorter has a really nice github README
 ---------
 
 TODO:

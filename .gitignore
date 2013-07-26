@@ -1,5 +1,6 @@
 .taco/*
 .DS_Store
 ._*
-gem/*.gem
+*.gem
 .burrito/*
+tmp/*
