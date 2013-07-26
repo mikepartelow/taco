@@ -4,6 +4,7 @@ BUGS
 - git tag as part of "rake release"
 - smarter rake release: check latest version on rubygems and don't allow version numbers below that
                         have an interactive mode instead of [1.2.3]
+                        gem list -r taco_it -a
 - FIXMEs
                         
 FEATURES
