@@ -592,11 +592,13 @@ class TacoCLI
 #
 Kind = Defect, Feature Request
 Status = Open, Closed
+Priority = 1, 2, 3, 4, 5
 
 # Default values for Issue fields
 #
 DefaultKind = Defect
 DefaultStatus = Open
+DefaultPriority = 3
 EOT
   RETRY_NAME = '.taco_retry.txt'
 
@@ -620,7 +622,9 @@ EOT
   end
 
   def list(args)
-    the_list = @taco.list(:short_ids => true, :filters => args).map { |issue, short_id| "#{short_id} : #{issue.summary}" }
+    the_list = @taco.list(:short_ids => true, :filters => args).map do |issue, short_id| 
+      "#{short_id} : #{issue.priority} : #{issue.summary}"
+    end
     return "Found no issues." unless the_list.size > 0
     the_list.join("\n")
   end
@@ -733,7 +737,7 @@ end
 require 'commander/import'
 
 program :name, 'taco'
-program :version, '1.1.2'
+program :version, '1.1.4'
 program :description, 'simple command line issue tracking'
 
 command :init do |c|

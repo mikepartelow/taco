@@ -5,18 +5,20 @@ BUGS
 
 FEATURES
 ---
-- make priority part of default sort order
+- ERB/html generator
+
 - display priorty in taco list
-- default priority in default tacorc
+
+- user-specifiable (via .tacorc and CL switches) column list for "taco list"
+- user-specifiable (via .tacorc and CL switches) sort order for "taco list"
+
+- make priority part of default sort order
 - CHANGELOG file
 - comments
 - ri/rdoc
-- ERB/html generator
 - clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
    (or is that what Issue is supposed to be doing?)
 - 4.0 on codeclimate
-- user-specifiable (via .tacorc and CL switches) column list for "taco list"
-- user-specifiable (via .tacorc and CL switches) sort order for "taco list"
 - don't report validation problems one at a time, report all of them at once
 - user-specified Issue attributes via .tacorc
 - Text vs. String type: one has newlines, the other doesn't
