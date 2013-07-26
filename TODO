@@ -2,7 +2,8 @@ BUGS
 ---
 - why do the specs print out "invalid command"? is it because i removed the __FILE__==$0?
 - git tag as part of "rake release"
-
+- smarter rake release: check latest version on rubygems and don't allow version numbers below that
+                        have an interactive mode instead of [1.2.3]
 FEATURES
 ---
 - ERB/html generator
