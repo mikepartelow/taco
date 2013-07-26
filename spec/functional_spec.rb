@@ -16,6 +16,8 @@ def ex(args, opts={:env => {}, :stderr => false})
   cmd = "cd #{TMP_PATH} && #{TACO_PATH} #{args}"
   cmd += " 2>&1" if opts[:stderr]
 
+  # FIXME: this code can't handle hundreds of lines out output. in that case, it hangs.
+  #        see NOTE 123456
   Process.wait(Process.spawn(opts[:env], cmd, :out => w))
   w.close
 
@@ -52,12 +54,14 @@ EOT
     it "initializes the repo" do 
       File.exists?(taco.home).should_not be_true
       r, out = ex 'init'
+      
       r.should eq 0
       out.should include taco.home
       File.exists?(taco.home).should be_true
       
       out.should include TacoCLI::RC_NAME   
       File.exists?(File.join(taco.home, TacoCLI::RC_NAME)).should be_true      
+      File.exists?(File.join(taco.home, TacoCLI::INDEX_ERB_NAME)).should be_true      
     end    
   end
   
@@ -619,6 +623,27 @@ EOT
     
     it "filters by attribute with spaces"
     it "filters by attribute with wildcard"    
+  end
+
+  describe "html" do    
+    it "generates html" do
+      r, out = ex 'init'
+      r.should eq 0
+
+      taco.write! issues
+   
+      # NOTE 123456
+      # FIXME: see the FIXME at ex()
+      #
+      r, out = ex 'html > /tmp/taco.spec.html'
+      r.should eq 0
+
+      out = open('/tmp/taco.spec.html') { |f| f.read }
+      
+      out.should include '<html>'
+      out.should include '</html>'
+      issues.each { |issue| out.should include issue.id }
+    end
   end
 
   describe "comment" do

@@ -601,6 +601,8 @@ DefaultStatus = Open
 DefaultPriority = 3
 EOT
   RETRY_NAME = '.taco_retry.txt'
+  INDEX_ERB_NAME = '.index.html.erb'
+  INDEX_ERB_SRC_PATH = File.realpath(File.join(File.dirname(__FILE__), '../lib/taco/defaults/index.html.erb'))  
 
   class ParseError < Exception; end
   
@@ -612,12 +614,17 @@ EOT
     @rc_path = File.join(@taco.home, RC_NAME)
     @config = parse_rc
     
+    @index_erb_path = File.join(@taco.home, INDEX_ERB_NAME)
+    
     Issue.set_allowed_values! @config[:allowed]
   end
   
   def init!
     out = @taco.init!
     open(@rc_path, 'w') { |f| f.write(RC_TEXT) }
+    
+    FileUtils.copy(INDEX_ERB_SRC_PATH, @index_erb_path)
+    
     out + "\nPlease edit the config file at #{@rc_path}"
   end
 
@@ -676,6 +683,13 @@ EOT
     else
       Issue::TEMPLATE.gsub(/%{.*?}/, '').strip
     end
+  end
+  
+  def html
+    require 'erb'
+    
+    issues = @taco.list
+    ERB.new(open(@index_erb_path) { |f| f.read }).result(binding)    
   end
   
   def push(opts)
@@ -737,7 +751,7 @@ end
 require 'commander/import'
 
 program :name, 'taco'
-program :version, '1.2.1'
+program :version, '1.3.0'
 program :description, 'simple command line issue tracking'
 
 command :init do |c|
@@ -862,6 +876,24 @@ command :template do |c|
       raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
       
       puts cli.template({ :defaults => options.defaults })
+    rescue Exception => e
+      puts "Error: #{e}"
+      exit 1
+    end
+  end  
+end
+
+command :html do |c|
+  c.syntax = 'taco html'
+  c.summary = 'Generate an HTML buglist'
+  c.description = 'Generate an HTML buglist from index.html.erb'
+  
+  c.action do |args, options|
+    begin
+      # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
+      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
+      
+      puts cli.html
     rescue Exception => e
       puts "Error: #{e}"
       exit 1

@@ -4,11 +4,15 @@ BUGS
 - git tag as part of "rake release"
 - smarter rake release: check latest version on rubygems and don't allow version numbers below that
                         have an interactive mode instead of [1.2.3]
+- FIXMEs
+                        
 FEATURES
 ---
-- ERB/html generator
+- re-org the dir structure.  look at other gems.  how do they organize the structure?
 
-- display priorty in taco list
+- jquery tablesorter for index.html
+
+- move default RC to defaults dir
 
 - user-specifiable (via .tacorc and CL switches) column list for "taco list"
 - user-specifiable (via .tacorc and CL switches) sort order for "taco list"

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>:: issues by taco ::</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+  <link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet"> 
+  <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+  <script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
+  
+  <script>
+    $(document).ready(function() {
+    })
+  </script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <h2>Issues</h2>
+      <table class="table table-bordered table-striped">    
+        <thead>
+          <tr>
+            <th>Issue ID</th>
+            <th>Created</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Summary</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% issues.each do |issue| %>
+            <tr>
+              <td><a href="#" data-toggle="modal" data-target="#modal-<%= issue.id %>"><%= issue.id %></a></td>
+              
+              <td><%= issue.created_at.strftime("%Y/%m/%d") %></td>
+              <td><%= issue.priority %></td>
+              <td><%= issue.status %></td>
+              <td><%= issue.owner %></td>
+              <td><%= issue.summary %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>  
+</body>
+
+<% issues.each do |issue| %>
+  <div id="modal-<%= issue.id %>" class="modal hide fade" tabindex="-1" role="dialog">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <h3><%= issue.summary %></h3>
+    </div>
+    <div class="modal-body">
+      <pre><%= issue.to_s %></pre>
+    </div>
+  </div>
+<% end %>
+</html>
