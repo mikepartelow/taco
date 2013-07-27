@@ -9,7 +9,7 @@ BUGS
                         
 FEATURES
 ---
-- re-org the dir structure.  look at other gems.  how do they organize the structure?
+- Issue.set_allowed_values! should also alter SCHEMA_ATTRIBUTES[:x][:default] (and be renamed)
 
 - jquery tablesorter for index.html
 

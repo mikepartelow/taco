@@ -508,7 +508,7 @@ EOT
   
   describe "comparable" do
     it "implements comparable such that issues are sortable by ascending created_at,id" do
-      issue.should eq issue.dup
+      issue.should eq Issue.from_json(issue.to_json)
       attrs = valid_attributes.dup
       attrs.delete :id
       
@@ -527,10 +527,10 @@ EOT
     end
     
     it "implements equality" do
-      reissue = issue.dup      
+      reissue = Issue.from_json(issue.to_json)      
       issue.should eq reissue
-    
-      reissue.summary = "this makes a change"      
+
+      reissue.summary = "this makes a change"
       issue.should_not eq reissue
     end    
   end
@@ -611,7 +611,7 @@ EOT
       issue.to_s(:changelog => true).should eq text
     end
         
-    describe "serializatin" do
+    describe "serialization" do
       it "gets jsonified by Issue.to_json" do
         old_summary = issue.summary
         issue.summary = "a new summary for a new era"
@@ -633,6 +633,25 @@ EOT
         reissue.changelog[-1].old_value.should eq old_summary
         reissue.changelog[-1].new_value.should eq "a new summary for a new era"
       end        
+    end
+  end
+  
+  describe "backwards compatibility" do
+    it "does not care if the JSON is missing fields" do
+      issue.priority = 5
+      the_json = issue.to_json
+      the_hash = JSON.parse(the_json)
+      the_hash['issue'].delete('priority')
+      the_json = JSON.pretty_generate(the_hash)
+      
+      reissue = Issue.from_json(the_json)
+      reissue.id.should eq issue.id
+      reissue.priority.should eq 0
+      
+      issue.should be_valid
+      reissue.should be_valid
+      
+      reissue.to_template.should include reissue.id
     end
   end
 end

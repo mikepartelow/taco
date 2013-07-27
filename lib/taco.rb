@@ -93,18 +93,18 @@ class Issue
   attr_reader :changelog
   
   SCHEMA_ATTRIBUTES = {
-    :id             => { :class => String,    :required => true,    :settable => false },
-    :created_at     => { :class => Time,      :required => true,    :settable => false },
-    :updated_at     => { :class => Time,      :required => true,    :settable => false },
+    :id             => { :class => String,    :required => true,    :default  => nil,     :settable => false },
+    :created_at     => { :class => Time,      :required => true,    :default  => nil,     :settable => false },
+    :updated_at     => { :class => Time,      :required => true,    :default  => nil,     :settable => false },
     
-    :summary        => { :class => String,    :required => true,    :settable => true },
-    :kind           => { :class => String,    :required => true,    :settable => true },
-    :status         => { :class => String,    :required => true,    :settable => true },
-    :owner          => { :class => String,    :required => true,    :settable => true },
+    :summary        => { :class => String,    :required => true,    :default  => '',      :settable => true },
+    :kind           => { :class => String,    :required => true,    :default  => '',      :settable => true },
+    :status         => { :class => String,    :required => true,    :default  => '',      :settable => true },
+    :owner          => { :class => String,    :required => true,    :default  => '',      :settable => true },
     
-    :priority       => { :class => Fixnum,    :required => true,    :settable => true },
+    :priority       => { :class => Fixnum,    :required => true,    :default  => 0,       :settable => true },
     
-    :description    => { :class => String,    :required => true,    :settable => true },
+    :description    => { :class => String,    :required => true,    :default  => '',      :settable => true },
   }
   
   TEMPLATE =<<-EOT.strip
@@ -133,9 +133,6 @@ EOT
     issue[:updated_at] = Time.now unless issue.include?(:updated_at) # intentionally not using ||=
     issue[:id] = SecureRandom.uuid.gsub('-', '') unless issue.include?(:id) # intentionally not using ||=
 
-    @changelog = []
-    @issue = {}
-    
     self.issue = Issue::format_attributes issue
     
     if changelog.size > 0
@@ -420,13 +417,32 @@ EOT
   
   private
     def issue=(new_issue)
-      new_issue.each do |attr, value|        
-        if SCHEMA_ATTRIBUTES[attr][:settable] && @issue[attr] != new_issue[attr]
-          @changelog << Change.new(:attribute => attr, :old_value => @issue[attr], :new_value => new_issue[attr])
+      @issue ||= {}
+      @changelog ||= []
+      
+      SCHEMA_ATTRIBUTES.each do |attr, data|
+        if new_issue.include? attr
+          if new_issue[attr] != @issue[attr] && data[:settable]
+            @changelog << Change.new(:attribute => attr, :old_value => @issue[attr], :new_value => new_issue[attr])
+          end
+
+          @issue[attr] = new_issue[attr]          
+        else
+          @issue[attr] ||= data[:default]
         end
       end
-      
-      @issue = new_issue
+
+      @issue
+    end
+    
+    def dup
+      # FIXME: make it work.
+      #        have to do a deep copy of @issue, for one thing.
+      raise NoMethodError.new
+    end
+    
+    def clone
+      raise NoMethodError.new
     end
 end
 
