@@ -86,12 +86,47 @@ class Change
   end
 end
 
+module Schema
+  def self.included(base)
+    base.extend(ClassMethods)
+  end
+  
+  module ClassMethods
+    def schema_attr(name, opts)      
+      @schema_attrs ||= {}
+
+      raise TypeError.new("attribute #{name}: missing or invalid :class") unless opts[:class].is_a?(Class)
+      raise TypeError.new("attribute #{name}: missing or invalid :default") unless opts[:default].is_a?(opts[:class])
+
+      raise ArgumentError.new("attribute #{name}: already exists") if @schema_attrs[name]
+      
+      @schema_attrs[name] = opts
+
+      method = %Q(def #{name}; @#{name} ||= #{opts[:default].inspect}; end)
+      module_eval method
+
+      if opts[:settable]
+        method = %Q(
+          def #{name}=(value)
+            opts = self.class.instance_variable_get("@schema_attrs")[:#{name}]
+            unless opts[:class] == value.class
+              raise TypeError.new("attribute #{name}: expected type #{opts[:class]}, received \#{value.class}")
+            end
+            @#{name} = value
+          end
+        )
+        module_eval method
+      end
+    end
+  end
+end
+
 
 class Issue  
   include Comparable
     
   attr_reader :changelog
-  
+    
   SCHEMA_ATTRIBUTES = {
     :id             => { :class => String,    :required => true,    :default  => nil,     :settable => false },
     :created_at     => { :class => Time,      :required => true,    :default  => nil,     :settable => false },
