@@ -16,6 +16,7 @@ describe Schema do
         schema_attr :baz, class: String, default: 'x', settable: true, values: lambda { |v| v !~ /^\s*$/ }
         schema_attr :ick, class: Fixnum, default: 1, settable: true, values: [1,2,3,4,5]
         schema_attr :thud, class: String, default: 'a', settable: true, values: %w(a b c)
+        schema_attr :wank, class: String, default: '', settable: true
       end
     end
     
@@ -180,13 +181,60 @@ describe Schema do
         end        
       end
       
-      describe "automatic coercion" do
+      describe "coercion" do
+        let(:foo) { Foo.new }
+        
+        specify { expect { foo.coerce!(:unknown_attribute, 7) }.to raise_error(ArgumentError) }
+        
+        it "should coerce String to Fixnum" do
+          foo.coerce!(:ick, '3')
+          foo.should be_valid
+          foo.ick.should eq 3
+        end
+        
+        it "returns the coerced value" do
+          foo.coerce!(:ick, '3').should eq 3
+        end
+        
+        it "shouldn't coerce non-Strings into Fixnum" do
+          expect { foo.coerce!(:ick, Time.new) }.to raise_error(TypeError)
+        end
+        
+        it "should raise ArgumentError when failing to coerce a String to Fixnum" do
+          expect { foo.coerce!(:ick, 'abc') }.to raise_error(ArgumentError)
+        end
+
+        it "should strip whitespace from String" do
+          foo.coerce!(:wank, "\n   foo bar baz   \n  \t  ")
+          foo.should be_valid
+          foo.wank.should eq "foo bar baz"
+        end        
+                
+                                
+                coerce:
+                  - default on
+                    - String => Fixnum
+                    - String => Time
+                  - can set to false
+                  - can set to Proc
+                  
+                munge:
+                  - default on
+                    - String => strip
+                    - Time => -subsec
+                  - can set to false
+                  - can set to Proc
+                  
+                valid:
+                  - rename :values
+                
+        fail "what are we trying to accomplish here?"
+                  
         it "should coerce String to Time"        
-        it "should coerce String to Fixnum"
+        it "shouldn't coerce non-Strings into Time"
+
         it "should truncate subsec precision of Time"
-        it "should strip whitespace from String"
         it "should raise [X] when failing to coerce a String to Time"
-        it "should raise [X] when failing to coerce a String to Fixnum"
       end
     end
     

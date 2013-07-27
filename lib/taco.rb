@@ -106,6 +106,24 @@ module Schema
     true
   end
   
+  def coerce!(attr, value)
+    opts = self.class.instance_variable_get("@schema_attrs")[attr]
+    raise ArgumentError.new("unknown attribute: #{attr}") unless opts
+    
+    case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
+    when 'Fixnum'
+      raise TypeError.new("attribute #{attr}: cannot coerce from #{value.class}") unless value.is_a?(String)
+      i = value.to_i
+      raise ArgumentError.new("attribute #{attr}: failed to coerce from #{value}") unless i.to_s == value
+      value = i      
+    when 'String'
+      raise TypeError.new("attribute #{attr}: cannot coerce from #{value.class}") unless value.is_a?(String)
+      value = value.strip
+    end
+    
+    eval "self.#{attr} = #{value.inspect}"
+  end
+  
   module ClassMethods
     def schema_attr(name, opts)      
       @schema_attrs ||= {}
