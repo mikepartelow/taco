@@ -13,9 +13,9 @@ describe Schema do
         include Schema
         
         schema_attr :bar, class: String, default: 'abc123'
-        schema_attr :baz, class: String, default: 'x', settable: true, values: lambda { |v| v !~ /^\s*$/ }
-        schema_attr :ick, class: Fixnum, default: 1, settable: true, values: [1,2,3,4,5]
-        schema_attr :thud, class: String, default: 'a', settable: true, values: %w(a b c)
+        schema_attr :baz, class: String, default: 'x', settable: true, validate: lambda { |v| v !~ /^\s*$/ }
+        schema_attr :ick, class: Fixnum, default: 1, settable: true, validate: [1,2,3,4,5]
+        schema_attr :thud, class: String, default: 'a', settable: true, validate: %w(a b c)
         schema_attr :wank, class: String, default: '', settable: true
         schema_attr :crud, class: Fixnum, default: 1, settable: true, coerce: false
         schema_attr :frob, class: String, default: '', settable: true, transform: false
@@ -31,6 +31,17 @@ describe Schema do
     
     it "creates getters with default value" do
       Foo.new.bar.should eq 'abc123'
+      Foo.new.scro.should be_within(2).of(Time.now)
+    end
+    
+    it "checks the type of Proc defaults at get-time" do
+      class Bar
+        include Schema
+      
+        schema_attr :scro, class: Time, default: lambda { 'boy howdy!' }, settable: true
+      end
+      bar = Bar.new
+      expect { bar.scro }.to raise_error(TypeError)      
     end
     
     it "is not settable by default" do
@@ -113,36 +124,36 @@ describe Schema do
         end         
       end    
             
-      it "allows a properly typed Array for :values" do
+      it "allows a properly typed Array for :validate" do
         class Bar
           include Schema
 
-          schema_attr :baz, class: String, default: 'baz', values: ['a', 'b', 'c']
+          schema_attr :baz, class: String, default: 'baz', validate: ['a', 'b', 'c']
         end 
         
         expect {
           class Baz
             include Schema
 
-            schema_attr :baz, class: String, default: 'baz', values: [1, 2, 3]
+            schema_attr :baz, class: String, default: 'baz', validate: [1, 2, 3]
           end           
         }.to raise_error(TypeError)
       end
       
-      it "allows a Proc for :values" do
+      it "allows a Proc for :validate" do
         class Bar
           include Schema
 
-          schema_attr :baz, class: String, default: 'baz', values: lambda { |x| true }
+          schema_attr :baz, class: String, default: 'baz', validate: lambda { |x| true }
         end 
       end
       
-      it "does not allow other types for :values" do
+      it "does not allow other types for :validate" do
         expect {
           class Bar
             include Schema
 
-            schema_attr :baz, class: String, default: 'baz', values: 2
+            schema_attr :baz, class: String, default: 'baz', validate: 2
           end           
         }.to raise_error(ArgumentError)
       end
@@ -209,7 +220,13 @@ describe Schema do
           expect { foo.ick = 'abc' }.to raise_error(TypeError)
         end
         
-        it "should coerce String to Time"        
+        it "should coerce String to Time" do
+          the_time = Time.new 2007, 5, 23, 3, 25, 0
+          Foo.scro = the_time.to_s
+          Foo.scro.class.should eq Time
+          Foo.scro.should eq the_time
+        end
+            
         it "should raise TypeError when failing to coerce a String to Time"        
         
         it "should do custom coercion" do
@@ -258,7 +275,3 @@ describe Schema do
     end
   end
 end
-
-__END__
-
-gotta rename :values to :validate or something better
