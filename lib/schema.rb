@@ -42,7 +42,7 @@ module Schema
       unless opts[:default].is_a?(opts[:class]) || opts[:default].is_a?(Proc)
         raise TypeError.new("attribute #{name}: invalid :default")
       end
-
+      
       if opts[:validate]
         unless opts[:validate].is_a?(Array) || opts[:validate].is_a?(Proc)
           raise ArgumentError.new("attribute #{name}: expecting Array or Proc for :validate")

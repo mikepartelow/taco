@@ -1,6 +1,6 @@
 require 'schema'
 
-describe Schema do
+describe Schema do    
   it "can be included in another class" do
     class Foo
       include Schema
@@ -9,6 +9,7 @@ describe Schema do
   
   describe "behavior" do
     before do
+      THE_TIME = Time.new 2007, 5, 23, 3, 25, 0, "-07:00"
       class Foo
         include Schema
         
@@ -19,8 +20,8 @@ describe Schema do
         schema_attr :wank, class: String, default: '', settable: true
         schema_attr :crud, class: Fixnum, default: 1, settable: true, coerce: false
         schema_attr :frob, class: String, default: '', settable: true, transform: false
-        schema_attr :scro, class: Time, default: lambda { Time.new 2007, 5, 23 }, settable: true
-        schema_attr :nart, class: Time, default: lambda { Time.now 2007, 5, 23 }, settable: true, coerce: false
+        schema_attr :scro, class: Time, default: lambda { THE_TIME }, settable: true
+        schema_attr :nart, class: Time, default: lambda { THE_TIME }, settable: true, coerce: false
         schema_attr :wozt, class: String
         schema_attr :wizt, class: Fixnum
         schema_attr :wuzt, class: Time
@@ -35,10 +36,13 @@ describe Schema do
     
     it "creates getters with default value" do
       Foo.new.bar.should eq 'abc123'
-      Foo.new.scro.should be_within(2).of(Time.now)
+      Foo.new.scro.should eq THE_TIME
       Foo.new.wozt.should eq ''
       Foo.new.wizt.should eq 0
       Foo.new.wuzt.should be_within(2).of(Time.now)
+      p "--"
+      p Foo.new.wuzt.subsec
+      p "--"
       Foo.new.wuzt.subsec should eq 0
     end
     
@@ -62,7 +66,7 @@ describe Schema do
       f.baz.should eq 'xyz'
       f.ick = 999
       f.ick.should eq 999
-      the_time = Time.new 2007, 5, 23, 3, 25, 0
+      the_time = THE_TIME
       f.scro = the_time
       f.scro.should eq the_time
     end
@@ -232,8 +236,7 @@ describe Schema do
         end
         
         it "should coerce String to Time" do
-          the_time = Time.new 2007, 5, 23, 3, 25, 0
-          foo.scro = the_time.to_s
+          foo.scro = THE_TIME.to_s
           foo.scro.class.should eq Time
           foo.scro.should eq the_time
         end
@@ -243,10 +246,9 @@ describe Schema do
         end
         
         it "should raise TypeError when coercions are disabled and a String is assigned to a Time field" do
-          the_time = Time.new 2007, 5, 23, 3, 25, 0
-          foo.nart = the_time
-          foo.nart.should eq the_time
-          expect { foo.nart = the_time.to_s }.to raise_error(TypeError)
+          foo.nart = THE_TIME
+          foo.nart.should eq THE_TIME
+          expect { foo.nart = THE_TIME.to_s }.to raise_error(TypeError)
         end
         
         it "should do custom coercion" do
@@ -317,6 +319,10 @@ describe Schema do
 end
 
 __END__
+
+transform must be part of GET: this way we can always scrub Times, even defaults, even un-settables.
+Time scrub transform can't be disabled (spec this)
+
 
 .to_hash
 attributes? maybe class needs attr_reader :schema_attrs (in which case stop calling instance_variable_get): nah, then we could write to opts
