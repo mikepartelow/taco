@@ -323,6 +323,8 @@ __END__
 transform must be part of GET: this way we can always scrub Times, even defaults, even un-settables.
 Time scrub transform can't be disabled (spec this)
 
+NO: ALWAYS create a setter, but make it private in case of unsettables.  then, in getter, call the setter.
+
 
 .to_hash
 attributes? maybe class needs attr_reader :schema_attrs (in which case stop calling instance_variable_get): nah, then we could write to opts
