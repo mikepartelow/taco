@@ -20,6 +20,7 @@ describe Schema do
         schema_attr :crud, class: Fixnum, default: 1, settable: true, coerce: false
         schema_attr :frob, class: String, default: '', settable: true, transform: false
         schema_attr :scro, class: Time, default: lambda { Time.now }, settable: true
+        schema_attr :nart, class: Time, default: lambda { Time.now }, settable: true, coerce: false
       end
     end
     
@@ -54,6 +55,9 @@ describe Schema do
       f.baz.should eq 'xyz'
       f.ick = 999
       f.ick.should eq 999
+      the_time = Time.new 2007, 5, 23, 3, 25, 0
+      f.scro = the_time
+      f.scro.should eq the_time
     end
     
     it "does not create setters for non-settable attributes" do
@@ -222,12 +226,21 @@ describe Schema do
         
         it "should coerce String to Time" do
           the_time = Time.new 2007, 5, 23, 3, 25, 0
-          Foo.scro = the_time.to_s
-          Foo.scro.class.should eq Time
-          Foo.scro.should eq the_time
+          foo.scro = the_time.to_s
+          foo.scro.class.should eq Time
+          foo.scro.should eq the_time
         end
             
-        it "should raise TypeError when failing to coerce a String to Time"        
+        it "should raise TypeError when failing to coerce a String to Time" do
+          expect { foo.scro = 'foo bar' }.to raise_error(TypeError)
+        end
+        
+        it "should raise TypeError when coercions are disabled and a String is assigned to a Time field" do
+          the_time = Time.new 2007, 5, 23, 3, 25, 0
+          foo.nart = the_time
+          foo.nart.should eq the_time
+          expect { foo.nart = the_time.to_s }.to raise_error(TypeError)
+        end
         
         it "should do custom coercion" do
           class Bar
@@ -270,7 +283,14 @@ describe Schema do
           bar.baz.should eq "abcxyz"
         end 
         
-        it "should remove subsec precision from Time by default"     
+        it "should remove subsec precision from Time by default" do
+          the_time = Time.at(1179915900, 12345)
+          the_time.subsec.should_not eq 0
+          
+          foo.scro = the_time
+          foo.scro.subsec.should eq 0
+          foo.scro.should eq Time.at(1179915900)
+        end
       end
     end
   end

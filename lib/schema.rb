@@ -1,3 +1,5 @@
+require 'time'
+
 module Schema
   def self.included(base)
     base.extend(ClassMethods)
@@ -60,15 +62,30 @@ module Schema
             unless opts[:coerce].is_a? Proc
               # the default coercion for Fixnum
               opts[:coerce] = lambda do |value|
-                  unless value.is_a?(Fixnum)
-                    raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}") unless value.is_a?(String)
-                    i = value.to_i
-                    raise TypeError.new("attribute #{name}: failed to coerce from \#{value}") unless i.to_s == value
-                    value = i
-                  end
-                  value
+                unless value.is_a?(Fixnum) # FIXME: this "unless value.is_a?(same class as 'when')" is copy-pasta.  fix it.
+                  raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}") unless value.is_a?(String)
+                  i = value.to_i
+                  raise TypeError.new("attribute #{name}: failed to coerce from \#{value}") unless i.to_s == value
+                  value = i
                 end
+                value
               end
+            end
+          when 'Time'
+            unless opts[:coerce].is_a? Proc
+              # the default coercion for Time
+              opts[:coerce] = lambda do |value|
+                unless value.is_a?(Time) # FIXME: this "unless value.is_a?(same class as 'when')" is copy-pasta.  fix it.
+                  raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}") unless value.is_a?(String)
+                  begin
+                    value = Time.parse(value)
+                  rescue ArgumentError
+                    raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}")
+                  end                  
+                end
+                value
+              end
+            end          
           end
           
           coerce = 'value = opts[:coerce].call(value)' if opts[:coerce]
@@ -78,9 +95,17 @@ module Schema
           case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
           when 'String'
             unless opts[:transform].is_a? Proc
-              # the default transform for String
+              # the default transform for String: remove excess whitespace
               opts[:transform] = lambda { |s| s.strip }
             end
+          when 'Time'
+            unless opts[:transform].is_a? Proc
+              # the default transform for Time: remove subsecond precision.  subsec precision is not recorded in to_s, so unless
+              #                                 we scrub it out, the following happens:
+              #                                 foo.a_time = Time.new
+              #                                 Time.parse(foo.a_time.to_s) == foo.a_time # returns false most of the time!
+              opts[:transform] = lambda { |t| Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset }
+            end            
           end
           
           transform = 'value = opts[:transform].call(value)' if opts[:transform]
