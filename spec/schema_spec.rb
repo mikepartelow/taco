@@ -1,5 +1,7 @@
 require 'schema'
 
+THE_TIME = Time.new 2007, 5, 23, 3, 25, 0, "-07:00"
+
 describe Schema do    
   it "can be included in another class" do
     class Foo
@@ -9,7 +11,6 @@ describe Schema do
   
   describe "behavior" do
     before do
-      THE_TIME = Time.new 2007, 5, 23, 3, 25, 0, "-07:00"
       class Foo
         include Schema
         

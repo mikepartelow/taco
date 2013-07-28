@@ -66,76 +66,75 @@ module Schema
       else
         %Q(value = #{opts[:default].inspect})
       end
-      module_eval "def #{name}; #{value_getter}; @#{name} ||= value; end"
+      module_eval "def #{name}; #{value_getter}; @#{name} || #{name}= value; end"
 
-      if opts[:settable]
         
-        unless opts[:coerce] == false # possible values are false=no-coerce, nil=default-coerce, Proc=custom-coerce
-          case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
-          when 'Fixnum'
-            unless opts[:coerce].is_a? Proc
-              # the default coercion for Fixnum
-              opts[:coerce] = lambda do |value|
-                unless value.is_a?(Fixnum) # FIXME: this "unless value.is_a?(same class as 'when')" is copy-pasta.  fix it.
-                  raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}") unless value.is_a?(String)
-                  i = value.to_i
-                  raise TypeError.new("attribute #{name}: failed to coerce from \#{value}") unless i.to_s == value
-                  value = i
-                end
-                value
+      unless opts[:coerce] == false # possible values are false=no-coerce, nil=default-coerce, Proc=custom-coerce
+        case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
+        when 'Fixnum'
+          unless opts[:coerce].is_a? Proc
+            # the default coercion for Fixnum
+            opts[:coerce] = lambda do |value|
+              unless value.is_a?(Fixnum) # FIXME: this "unless value.is_a?(same class as 'when')" is copy-pasta.  fix it.
+                raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}") unless value.is_a?(String)
+                i = value.to_i
+                raise TypeError.new("attribute #{name}: failed to coerce from \#{value}") unless i.to_s == value
+                value = i
               end
+              value
             end
-          when 'Time'
-            unless opts[:coerce].is_a? Proc
-              # the default coercion for Time
-              opts[:coerce] = lambda do |value|
-                unless value.is_a?(Time) # FIXME: this "unless value.is_a?(same class as 'when')" is copy-pasta.  fix it.
-                  raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}") unless value.is_a?(String)
-                  begin
-                    value = Time.parse(value)
-                  rescue ArgumentError
-                    raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}")
-                  end                  
-                end
-                value
-              end
-            end          
           end
-          
-          coerce = 'value = opts[:coerce].call(value)' if opts[:coerce]
+        when 'Time'
+          unless opts[:coerce].is_a? Proc
+            # the default coercion for Time
+            opts[:coerce] = lambda do |value|
+              unless value.is_a?(Time) # FIXME: this "unless value.is_a?(same class as 'when')" is copy-pasta.  fix it.
+                raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}") unless value.is_a?(String)
+                begin
+                  value = Time.parse(value)
+                rescue ArgumentError
+                  raise TypeError.new("attribute #{name}: cannot coerce from \#{value.class}")
+                end                  
+              end
+              value
+            end
+          end          
         end
         
-        unless opts[:transform] == false # possible values are false=no-transform, nil=default-transform, Proc=custom-transform
-          case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
-          when 'String'
-            unless opts[:transform].is_a? Proc
-              # the default transform for String: remove excess whitespace
-              opts[:transform] = lambda { |s| s.strip }
-            end
-          when 'Time'
-            unless opts[:transform].is_a? Proc
-              # the default transform for Time: remove subsecond precision.  subsec precision is not recorded in to_s, so unless
-              #                                 we scrub it out, the following happens:
-              #                                 foo.a_time = Time.new
-              #                                 Time.parse(foo.a_time.to_s) == foo.a_time # returns false most of the time!
-              opts[:transform] = lambda { |t| Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset }
-            end            
-          end
-          
-          transform = 'value = opts[:transform].call(value)' if opts[:transform]
-        end
-        
-        setter_method = %Q(
-          def #{name}=(value)
-            opts = self.class.instance_variable_get("@schema_attrs")[:#{name}]
-            #{coerce}
-            raise TypeError.new("attribute #{name}: expected type #{opts[:class]}, received \#{value.class}") unless opts[:class] == value.class            
-            #{transform}            
-            @#{name} = value
-          end
-        )
-        module_eval setter_method
+        coerce = 'value = opts[:coerce].call(value)' if opts[:coerce]
       end
+      
+      unless opts[:transform] == false # possible values are false=no-transform, nil=default-transform, Proc=custom-transform
+        case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
+        when 'String'
+          unless opts[:transform].is_a? Proc
+            # the default transform for String: remove excess whitespace
+            opts[:transform] = lambda { |s| s.strip }
+          end
+        when 'Time'
+          unless opts[:transform].is_a? Proc
+            # the default transform for Time: remove subsecond precision.  subsec precision is not recorded in to_s, so unless
+            #                                 we scrub it out, the following happens:
+            #                                 foo.a_time = Time.new
+            #                                 Time.parse(foo.a_time.to_s) == foo.a_time # returns false most of the time!
+            opts[:transform] = lambda { |t| Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset }
+          end            
+        end
+        
+        transform = 'value = opts[:transform].call(value)' if opts[:transform]
+      end
+      
+      setter_method = %Q(
+        def #{name}=(value)
+          opts = self.class.instance_variable_get("@schema_attrs")[:#{name}]
+          #{coerce}
+          raise TypeError.new("attribute #{name}: expected type #{opts[:class]}, received \#{value.class}") unless opts[:class] == value.class            
+          #{transform}            
+          @#{name} = value
+        end
+      )
+      module_eval setter_method
+      module_eval "private :#{name}=" unless opts[:settable]
     end
   end
 end
