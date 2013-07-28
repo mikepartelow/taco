@@ -1,4 +1,4 @@
-require 'taco'
+require 'schema'
 
 describe Schema do
   it "can be included in another class" do
@@ -17,6 +17,8 @@ describe Schema do
         schema_attr :ick, class: Fixnum, default: 1, settable: true, values: [1,2,3,4,5]
         schema_attr :thud, class: String, default: 'a', settable: true, values: %w(a b c)
         schema_attr :wank, class: String, default: '', settable: true
+        schema_attr :crud, class: Fixnum, default: 1, settable: true, coerce: false
+        schema_attr :frob, class: String, default: '', settable: true, transform: false
       end
     end
     
@@ -154,7 +156,7 @@ describe Schema do
 
         # ick is a Fixnum
         specify { expect { Foo.new.ick = nil }.to raise_error(TypeError) }
-        specify { expect { Foo.new.ick = '123' }.to raise_error(TypeError) }
+        specify { expect { Foo.new.ick = 'abc' }.to raise_error(TypeError) }
         specify { expect { Foo.new.ick = Time.new }.to raise_error(TypeError) }
       end
       
@@ -162,7 +164,6 @@ describe Schema do
         let(:foo) { Foo.new }
         
         it "is valid by default" do
-          p foo.instance_variables
           foo.should be_valid
         end
         
@@ -184,31 +185,78 @@ describe Schema do
       describe "coercion" do
         let(:foo) { Foo.new }
         
-        specify { expect { foo.coerce!(:unknown_attribute, 7) }.to raise_error(ArgumentError) }
-        
-        it "should coerce String to Fixnum" do
-          foo.coerce!(:ick, '3')
+        it "should coerce String to Fixnum by default" do
+          foo.ick = '3'
           foo.should be_valid
           foo.ick.should eq 3
         end
         
-        it "returns the coerced value" do
-          foo.coerce!(:ick, '3').should eq 3
+        it "should not coerce String to Fixnum when coercion is disabled" do
+          expect { foo.crud = '3' }.to raise_error(TypeError)
         end
         
         it "shouldn't coerce non-Strings into Fixnum" do
-          expect { foo.coerce!(:ick, Time.new) }.to raise_error(TypeError)
+          expect { foo.ick = Time.new }.to raise_error(TypeError)
+        end
+      
+        it "should raise TypeError when failing to coerce a String to Fixnum" do
+          expect { foo.ick = 'abc' }.to raise_error(TypeError)
         end
         
-        it "should raise ArgumentError when failing to coerce a String to Fixnum" do
-          expect { foo.coerce!(:ick, 'abc') }.to raise_error(ArgumentError)
-        end
+        it "should coerce String to Time"        
+        it "should raise TypeError when failing to coerce a String to Time"        
+        
+        it "should do custom coercion" do
+          class Bar
+            include Schema
 
-        it "should strip whitespace from String" do
-          foo.coerce!(:wank, "\n   foo bar baz   \n  \t  ")
+            schema_attr :baz, class: String, default: 'baz', settable: true, coerce: lambda { |baz| (baz + 3).to_s }
+          end
+          
+          bar = Bar.new
+          bar.baz = 2
+          bar.baz.should eq '5'
+        end
+          
+      end
+      
+      describe "transform" do
+        let(:foo) { Foo.new }
+        
+        it "should strip whitespace from String by default" do
+          foo.wank = "\n   foo bar baz   \n  \t  "
           foo.should be_valid
           foo.wank.should eq "foo bar baz"
-        end        
+        end
+        
+        it "should not strip whitespace from String when transform is disabled" do
+          foo.frob = "\n   foo bar baz   \n  \t  "
+          foo.should be_valid
+          foo.frob.should eq "\n   foo bar baz   \n  \t  "
+        end
+        
+        it "should do custom transformation" do
+          class Bar
+            include Schema
+
+            schema_attr :baz, class: String, default: 'baz', settable: true, transform: lambda { |baz| baz += 'xyz' }
+          end
+          
+          bar = Bar.new
+          bar.baz = "abc"
+          bar.baz.should eq "abcxyz"
+        end      
+      end
+    end
+  end
+end
+
+__END__
+                
+        
+        
+        
+
                 
                                 
                 coerce:
@@ -230,8 +278,6 @@ describe Schema do
                 
         fail "what are we trying to accomplish here?"
                   
-        it "should coerce String to Time"        
-        it "shouldn't coerce non-Strings into Time"
 
         it "should truncate subsec precision of Time"
         it "should raise [X] when failing to coerce a String to Time"
