@@ -7,16 +7,8 @@ require 'fileutils'
 require 'securerandom'
 require 'time'
 
-def timescrub(t)
-  # Time objects have sub-second precision.  Unfortunately, this precision is lost when we serialize.  What this means
-  # is that the following code will fail, most unexpectedly:
-  #
-  #  i0 = Issue.new some_attributes
-  #  i1 = Issue.from_json(i0.to_json)
-  #  i0.created_at == i1.created_at  # this will be false!
-  #      
-  Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset
-end
+require 'change'
+require 'schema'
 
 # it's rude to pollute the global namespace, but here we go.
 #
@@ -24,88 +16,23 @@ def date(t)
   t.strftime "%Y/%m/%d %H:%M:%S"
 end
 
-class Change
-  class Invalid < Exception; end
-  
-  attr_reader   :created_at
-  attr_accessor :attribute
-  attr_accessor :old_value
-  attr_accessor :new_value  
-  
-  def initialize(args={})
-    args.each do |attr, value|
-      raise ArgumentError.new("Unknown attribute #{attr}") unless self.respond_to?(attr)
-      
-      case attr.to_sym
-      when :created_at
-        value = Time.parse(value) unless value.is_a?(Time)
-      when :attribute
-        value = value.to_sym
-      end
-      
-      instance_variable_set("@#{attr.to_s}", value)
-    end
-    
-    @created_at = Time.parse(@created_at) if @created_at.is_a?(String)
-    @created_at = timescrub(@created_at || Time.now)
-    
-    self
-  end  
-  
-  def self.from_json(the_json)
-    begin
-      hash = JSON.parse(the_json)
-    rescue JSON::ParserError => e
-      raise Change::Invalid.new(e.to_s)
-    end
-
-    Change.new(hash)      
-  end
-  
-  def valid?(opts={})
-    # old_value is optional!
-    #
-    valid = created_at && attribute && new_value
-    raise Invalid if opts[:raise] && !valid
-    valid
-  end
-  
-  def to_json(state=nil)
-    valid? :raise => true
-    hash = { :created_at => created_at, :attribute => attribute, :old_value => old_value, :new_value => new_value }
-    JSON.pretty_generate(hash)
-  end
-  
-  def to_s(opts={})
-    if opts[:simple]
-      "#{attribute} : #{old_value} => #{new_value}"
-    else
-      fields = [ date(created_at), attribute, old_value || '[nil]', new_value ]        
-      "%10s : %12s : %s => %s" % fields        
-    end
-  end
-end
-
 class Issue  
   include Comparable
-    
+  include Schema
+   
   attr_reader :changelog
-    
-  SCHEMA_ATTRIBUTES = {
-    :id             => { :class => String,    :required => true,    :default  => nil,     :settable => false },
-    :created_at     => { :class => Time,      :required => true,    :default  => nil,     :settable => false },
-    :updated_at     => { :class => Time,      :required => true,    :default  => nil,     :settable => false },
-    
-    :summary        => { :class => String,    :required => true,    :default  => '',      :settable => true },
-    :kind           => { :class => String,    :required => true,    :default  => '',      :settable => true },
-    :status         => { :class => String,    :required => true,    :default  => '',      :settable => true },
-    :owner          => { :class => String,    :required => true,    :default  => '',      :settable => true },
-    
-    :priority       => { :class => Fixnum,    :required => true,    :default  => 0,       :settable => true },
-    
-    :description    => { :class => String,    :required => true,    :default  => '',      :settable => true },
-  }
+
+  schema_attr :id,          class: String,      settable: false
+  schema_attr :created_at,  class: Time,        settable: false
+  schema_attr :updated_at,  class: Time,        settable: false
   
+  schema_attr :summary,     class: String,      settable: true
+  schema_attr :kind,        class: String,      settable: true
+  schema_attr :status,      class: String,      settable: true
+  schema_attr :owner,       class: String,      settable: true
+  schema_attr :priority,    class: Fixnum,      settable: true
+  schema_attr :description, class: String,      settable: true
+    
   TEMPLATE =<<-EOT.strip
 # Lines beginning with # will be ignored.
 Summary     : %{summary}

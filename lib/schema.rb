@@ -25,8 +25,22 @@ module Schema
       @schema_attrs ||= {}
 
       raise TypeError.new("attribute #{name}: missing or invalid :class") unless opts[:class].is_a?(Class)
+      
+      if opts[:default].nil?
+        opts[:default] = case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
+        when 'String'
+          ''
+        when 'Fixnum'
+          0
+        when 'Time'
+          lambda { Time.new }
+        else
+          raise ArgumentError.new("Sorry, no default default exists for #{opts[:class]}")
+        end
+      end
+            
       unless opts[:default].is_a?(opts[:class]) || opts[:default].is_a?(Proc)
-        raise TypeError.new("attribute #{name}: missing or invalid :default")
+        raise TypeError.new("attribute #{name}: invalid :default")
       end
 
       if opts[:validate]
