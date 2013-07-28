@@ -19,6 +19,7 @@ describe Schema do
         schema_attr :wank, class: String, default: '', settable: true
         schema_attr :crud, class: Fixnum, default: 1, settable: true, coerce: false
         schema_attr :frob, class: String, default: '', settable: true, transform: false
+        schema_attr :scro, class: Time, default: lambda { Time.now }, settable: true
       end
     end
     
@@ -158,6 +159,11 @@ describe Schema do
         specify { expect { Foo.new.ick = nil }.to raise_error(TypeError) }
         specify { expect { Foo.new.ick = 'abc' }.to raise_error(TypeError) }
         specify { expect { Foo.new.ick = Time.new }.to raise_error(TypeError) }
+        
+        # scro is a Time
+        specify { expect { Foo.new.scro = nil }.to raise_error(TypeError) }
+        specify { expect { Foo.new.scro = 123 }.to raise_error(TypeError) }
+        specify { expect { Foo.new.scro = 'abc' }.to raise_error(TypeError) }
       end
       
       describe "valid?" do
@@ -245,44 +251,14 @@ describe Schema do
           bar = Bar.new
           bar.baz = "abc"
           bar.baz.should eq "abcxyz"
-        end      
+        end 
+        
+        it "should remove subsec precision from Time by default"     
       end
     end
   end
 end
 
 __END__
-                
-        
-        
-        
 
-                
-                                
-                coerce:
-                  - default on
-                    - String => Fixnum
-                    - String => Time
-                  - can set to false
-                  - can set to Proc
-                  
-                munge:
-                  - default on
-                    - String => strip
-                    - Time => -subsec
-                  - can set to false
-                  - can set to Proc
-                  
-                valid:
-                  - rename :values
-                
-        fail "what are we trying to accomplish here?"
-                  
-
-        it "should truncate subsec precision of Time"
-        it "should raise [X] when failing to coerce a String to Time"
-      end
-    end
-    
-  end
-end
+gotta rename :values to :validate or something better
