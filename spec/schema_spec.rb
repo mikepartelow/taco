@@ -41,10 +41,7 @@ describe Schema do
       Foo.new.wozt.should eq ''
       Foo.new.wizt.should eq 0
       Foo.new.wuzt.should be_within(2).of(Time.now)
-      p "--"
-      p Foo.new.wuzt.subsec
-      p "--"
-      Foo.new.wuzt.subsec should eq 0
+      Foo.new.wuzt.subsec.should eq 0
     end
     
     it "checks the type of Proc defaults at get-time" do
@@ -94,17 +91,7 @@ describe Schema do
           end 
         }.to raise_error(TypeError)
       end
-    
-      it "requires a default" do
-        expect {
-          class Bar
-            include Schema
-          
-            schema_attr :baz, class: String
-          end 
-        }.to raise_error(TypeError)
-      end
-    
+        
       it "requires a default of the proper type" do
         expect {
           class Bar
@@ -239,7 +226,7 @@ describe Schema do
         it "should coerce String to Time" do
           foo.scro = THE_TIME.to_s
           foo.scro.class.should eq Time
-          foo.scro.should eq the_time
+          foo.scro.should eq THE_TIME
         end
             
         it "should raise TypeError when failing to coerce a String to Time" do
@@ -313,19 +300,13 @@ describe Schema do
           bar = Bar.new
           bar.baz.subsec.should eq 0          
           bar.ick.subsec.should eq 0          
-        end
+        end        
       end
     end
   end
 end
 
 __END__
-
-transform must be part of GET: this way we can always scrub Times, even defaults, even un-settables.
-Time scrub transform can't be disabled (spec this)
-
-NO: ALWAYS create a setter, but make it private in case of unsettables.  then, in getter, call the setter.
-
 
 .to_hash
 attributes? maybe class needs attr_reader :schema_attrs (in which case stop calling instance_variable_get): nah, then we could write to opts

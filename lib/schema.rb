@@ -66,8 +66,15 @@ module Schema
       else
         %Q(value = #{opts[:default].inspect})
       end
-      module_eval "def #{name}; #{value_getter}; @#{name} || #{name}= value; end"
-
+      module_eval %Q(
+                      def #{name}
+                        if @#{name}.nil?
+                          #{value_getter}
+                          self.#{name}= value
+                        end
+                        @#{name}
+                      end
+                    )
         
       unless opts[:coerce] == false # possible values are false=no-coerce, nil=default-coerce, Proc=custom-coerce
         case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
@@ -128,7 +135,7 @@ module Schema
         def #{name}=(value)
           opts = self.class.instance_variable_get("@schema_attrs")[:#{name}]
           #{coerce}
-          raise TypeError.new("attribute #{name}: expected type #{opts[:class]}, received \#{value.class}") unless opts[:class] == value.class            
+          raise TypeError.new("attribute #{name}: expected type #{opts[:class]}, received \#{value.class}") unless opts[:class] == value.class
           #{transform}            
           @#{name} = value
         end
