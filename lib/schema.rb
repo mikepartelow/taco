@@ -11,22 +11,31 @@ module Schema
     base.extend(ClassMethods)
   end
   
+  def to_hash
+    Hash[self.class.schema_attributes.map do |attr, opts|
+      [ attr, send(attr) ]
+    end]
+  end
+  
   def valid?
-    self.class.instance_variable_get("@schema_attrs").each do |attr, opts|
+    self.class.schema_attributes.each do |attr, opts|
       if opts[:validate].nil?
         case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
         when 'String'
-          opts[:validate] = lambda { |v| v !~ /^\s*$/ }
+          opts[:validate] = lambda { |v| v !~ /\A\s*\Z/ }
         end
       end
       
       if opts[:validate]
         value = eval(attr.to_s)
-        if opts[:validate].is_a?(Array)
-          return false unless opts[:validate].include? value
+        
+        valid = if opts[:validate].is_a?(Array)
+          opts[:validate].include? value
         elsif opts[:validate].is_a?(Proc)
-          return false unless opts[:validate].call(value)
+          opts[:validate].call(value)
         end
+        
+        return false unless valid
       end
     end
     
@@ -35,7 +44,7 @@ module Schema
     
   module ClassMethods
     def schema_attributes
-      @schema_attrs.keys
+      @schema_attrs
     end
     
     def schema_attr(name, opts)      
@@ -76,7 +85,7 @@ module Schema
       
       value_getter = if opts[:default].is_a?(Proc)
         %Q(
-            opts = self.class.instance_variable_get("@schema_attrs")[:#{name}]
+            opts = self.class.schema_attributes[:#{name}]
             value = opts[:default].call
             raise TypeError.new("attribute #{name}: expected type #{opts[:class]}, received \#{value.class}") unless opts[:class] == value.class            
         )        
@@ -148,12 +157,19 @@ module Schema
         transform = 'value = opts[:transform].call(value)' if opts[:transform]
       end
       
+      callback = %Q(
+        if self.respond_to? :schema_attribute_change
+          self.schema_attribute_change(:#{name}, @#{name}, value)
+        end
+      )
+      
       setter_method = %Q(
         def #{name}=(value)
-          opts = self.class.instance_variable_get("@schema_attrs")[:#{name}]
+          opts = self.class.schema_attributes[:#{name}]
           #{coerce}
           raise TypeError.new("attribute #{name}: expected type #{opts[:class]}, received \#{value.class}") unless opts[:class] == value.class
-          #{transform}            
+          #{transform}
+          #{callback}            
           @#{name} = value
         end
       )

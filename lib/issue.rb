@@ -1,9 +1,12 @@
 require 'schema'
+require 'change'
 
 class Issue  
   include Comparable
   include Schema
-   
+  
+  alias_method :schema_valid?, :valid?
+  
   attr_reader :changelog
 
   schema_attr :id,          class: String,      settable: false
@@ -36,12 +39,23 @@ EOT
   
   def initialize(attributes={}, changelog=[])
     attributes = Hash[attributes.map { |k, v| [ k.to_sym, v ] }]
+
+    @new = attributes[:created_at].nil? && attributes[:id].nil?      
+
+    @changelog = []
+            
+    attributes.each do |attr, value|
+      schema_attr = self.class.schema_attributes[attr]
+      raise ArgumentError.new("unknown attribute: #{attr}") unless schema_attr
+      if schema_attr[:settable]
+        self.send "#{attr}=", attributes[attr]
+      end
+    end
     
-    # @new = issue[:created_at].nil? && issue[:id].nil?      
-    # 
-    # issue[:created_at] = Time.now unless issue.include?(:created_at) # intentionally not using ||=
-    # issue[:updated_at] = Time.now unless issue.include?(:updated_at) # intentionally not using ||=
-    # issue[:id] = SecureRandom.uuid.gsub('-', '') unless issue.include?(:id) # intentionally not using ||=
+    self.id = attributes[:id] || SecureRandom.uuid.gsub('-', '')
+    self.created_at = attributes[:created_at] || Time.now
+    self.updated_at = attributes[:updated_at] || Time.now
+    
     # 
     # self.issue = Issue::format_attributes issue
     # 
@@ -58,74 +72,35 @@ EOT
     self
   end
   
+  def schema_attribute_change(attribute, old_value, new_value)
+    if self.class.schema_attributes[attribute][:settable]
+      self.updated_at = Time.now
+      @changelog << Change.new(:attribute => attribute, :old_value => old_value, :new_value => new_value)
+    end
+  end   
+  
   def new?
     @new
   end
   
-  def self.set_allowed_values!(attrs=nil)
-    if attrs.nil?
-      SCHEMA_ATTRIBUTES.each { |attr, data| data.delete(:allowed_values) }
-    else
-      attrs.each do |attr, values|
-        raise ArgumentError.new("Unknown Issue attributes: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr      
-      
-        if SCHEMA_ATTRIBUTES[attr][:class] == Fixnum
-          values.map!(&:to_i)
-        end
-        
-        SCHEMA_ATTRIBUTES[attr][:allowed_values] = values
-      end
-    end
-  end
-  
-  def self.format_attributes(issue_attrs)
-    attrs = issue_attrs.dup
+  # def self.set_allowed_values!(attrs=nil)
+  #   if attrs.nil?
+  #     SCHEMA_ATTRIBUTES.each { |attr, data| data.delete(:allowed_values) }
+  #   else
+  #     attrs.each do |attr, values|
+  #       raise ArgumentError.new("Unknown Issue attributes: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr      
+  #     
+  #       if SCHEMA_ATTRIBUTES[attr][:class] == Fixnum
+  #         values.map!(&:to_i)
+  #       end
+  #       
+  #       SCHEMA_ATTRIBUTES[attr][:allowed_values] = values
+  #     end
+  #   end
+  # end
     
-    attrs.keys.each { |attr| raise ArgumentError.new("Unknown Issue attribute: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr }
-    
-    SCHEMA_ATTRIBUTES.each do |attr, cfg|
-      next unless attrs.include? attr
-
-      case cfg[:class].to_s # can't case on cfg[:class], because class of cfg[:class] is always Class :-)
-      when 'Time'
-        unless attrs[attr].is_a?(String) || attrs[attr].is_a?(Time)
-          raise TypeError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
-        end
-        
-        t = if attrs[attr].is_a?(String)
-          begin
-            Time.parse(attrs[attr])
-          rescue ArgumentError => e
-            raise TypeError.new(e.to_s)
-          end
-        else
-          attrs[attr]
-        end
-        attrs[attr] = timescrub(t)
-      when 'String'
-        unless attrs[attr].is_a?(String)
-          raise TypeError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
-        end
-         
-        attrs[attr] && attrs[attr].strip!
-      when 'Fixnum'
-        unless attrs[attr].is_a?(Fixnum) || attrs[attr].is_a?(String)
-          raise TypeError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}")
-        end          
-        
-        if attrs[attr].is_a?(String)
-          i = attrs[attr].to_i
-          raise TypeError.new("#{attr} : expected type #{cfg[:class]}, got type #{attrs[attr].class}") unless i.to_s == attrs[attr]
-          attrs[attr] = i
-        end
-      end      
-    end 
-        
-    attrs   
-  end
-  
   def <=>(other)
-    if SCHEMA_ATTRIBUTES.all? { |attr, cfg| self.send(attr) == other.send(attr) }
+    if self.class.schema_attributes.all? { |attr, opts| self.send(attr) == other.send(attr) }
       r = 0
     else
       if self.created_at == other.created_at
@@ -143,7 +118,7 @@ EOT
   end
 
   def inspect
-    fields = SCHEMA_ATTRIBUTES.map do |attr, cfg|
+    fields = self.class.schema_attributes.map do |attr, opts|
       "@#{attr}=#{self.send(attr).inspect}"
     end.join ', '
     
@@ -174,9 +149,15 @@ EOT
     text
   end
   
+  def valid?(opts={})
+    valid = schema_valid?
+    raise Invalid.new unless valid || !opts[:raise]
+    valid
+  end
+  
   def to_json(state=nil)
     valid? :raise => true
-    hash = { :issue => @issue, :changelog => changelog }
+    hash = { :issue => self.to_hash, :changelog => changelog }
     JSON.pretty_generate(hash)
   end
   
@@ -194,7 +175,7 @@ EOT
 # Updated At  : #{updated_at}
 #
 EOT
-      body = TEMPLATE % @issue
+      body = TEMPLATE % self.to_hash
       
       footer =<<-EOT      
 # ChangeLog
@@ -233,10 +214,10 @@ EOT
       if !reading_description && line =~ /^(\w+)\s*:\s*(.*)$/
         key, value = $1.downcase.to_sym, $2.strip
         
-        if SCHEMA_ATTRIBUTES.include?(key) && SCHEMA_ATTRIBUTES[key][:settable]
+        if schema_attributes.include?(key) && schema_attributes[key][:settable]
           issue[key] = value
         else
-          raise ArgumentError.new("Unknown Issue attribute: #{key} on line #{index+1}") unless SCHEMA_ATTRIBUTES.include?(key)
+          raise ArgumentError.new("Unknown Issue attribute: #{key} on line #{index+1}") unless schema_attributes.include?(key)
           raise ArgumentError.new("Cannot set write-protected Issue attribute: #{key} on line #{index+1}")
         end
       elsif reading_description
@@ -252,74 +233,23 @@ EOT
   def update_from_template!(text)
     new_issue = Issue.from_template(text)
     
-    attrs = SCHEMA_ATTRIBUTES.map do |attr, data|
+    attrs = self.class.schema_attributes.map do |attr, data|
       if data[:settable]
         [ attr, new_issue.send(attr) ]
       else
-        [ attr, @issue[attr] ]
+        [ attr, self.send(attr) ]
       end
     end
 
-    self.issue = Issue::format_attributes(Hash[attrs])
-    @issue[:updated_at] = timescrub Time.now
-    
     self
-  end
-  
-  # def valid?(opts={})
-  #   begin
-  #     raise Issue::Invalid.new("id is nil") unless id
-  # 
-  #     SCHEMA_ATTRIBUTES.each do |attr, cfg| 
-  #       raise Issue::Invalid.new("Missing required attribute: #{attr}") if cfg[:required] && @issue[attr].nil?
-  #     end
-  # 
-  #     @issue.each do |attr, value|
-  #       unless @issue[attr].is_a?(SCHEMA_ATTRIBUTES[attr][:class])
-  #         raise Issue::Invalid.new("Wrong type: #{attr} (expected #{SCHEMA_ATTRIBUTES[attr][:class]}, got #{@issue[attr.class]})")
-  #       end
-  # 
-  #       if allowed_values = SCHEMA_ATTRIBUTES[attr][:allowed_values]
-  #         unless allowed_values.include? @issue[attr]
-  #           raise Issue::Invalid.new("#{@issue[attr]} is not an allowed value for #{attr.capitalize}")
-  #         end
-  #       end
-  #     
-  #       if SCHEMA_ATTRIBUTES[attr][:class] == String && @issue[attr] =~ /\A\s*\Z/
-  #         raise Issue::Invalid.new("Empty string is not allowed for #{attr}")
-  #       end
-  #     end
-  #   rescue Issue::Invalid => e
-  #     return false unless opts[:raise]
-  #     raise e
-  #   end
-  #   
-  #   true
-  # end
+  end  
   
   private
-    def issue=(new_issue)
-      @issue ||= {}
-      @changelog ||= []
-      
-      SCHEMA_ATTRIBUTES.each do |attr, data|
-        if new_issue.include? attr
-          if new_issue[attr] != @issue[attr] && data[:settable]
-            @changelog << Change.new(:attribute => attr, :old_value => @issue[attr], :new_value => new_issue[attr])
-          end
-
-          @issue[attr] = new_issue[attr]          
-        else
-          @issue[attr] ||= data[:default]
-        end
-      end
-
-      @issue
+    def date(t)
+      t.strftime "%Y/%m/%d %H:%M:%S"
     end
-    
+  
     def dup
-      # FIXME: make it work.
-      #        have to do a deep copy of @issue, for one thing.
       raise NoMethodError.new
     end
     

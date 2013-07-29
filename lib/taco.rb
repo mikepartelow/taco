@@ -10,12 +10,6 @@ require 'time'
 require 'change'
 require 'schema'
 
-# it's rude to pollute the global namespace, but here we go.
-#
-def date(t)
-  t.strftime "%Y/%m/%d %H:%M:%S"
-end
-
 
 class Taco
   HOME_DIR = '.taco'

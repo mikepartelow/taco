@@ -50,9 +50,9 @@ describe Schema do
     end
     
     it "has a schema_attributes class method" do
-      Foo.schema_attributes.sort.should eq [ :bar, :baz, :ick, :thud, :wank, :crud, :frob, :scro, :nart, :wozt, :wizt, :wuzt ].sort
+      Foo.schema_attributes.keys.sort.should eq [ :bar, :baz, :ick, :thud, :wank, :crud, :frob, :scro, :nart, :wozt, :wizt, :wuzt ].sort
     end
-    
+        
     it "creates getters with default value" do
       Foo.new.bar.should eq 'abc123'
       Foo.new.scro.should eq THE_TIME
@@ -342,6 +342,41 @@ describe Schema do
           bar.ick.subsec.should eq 0          
         end        
       end
+    end
+    
+    describe "to_hash" do
+      it "converts itself to a hash" do
+        foo = ValidByDefaultFoo.new
+        the_hash = foo.to_hash
+        the_hash.size.should eq foo.class.schema_attributes.size
+        foo.class.schema_attributes.each do |attr, opts|
+          the_hash[attr].should eq foo.send(attr)
+        end
+      end
+    end
+    
+    describe "change callback" do
+      before do
+        class Bar
+          include Schema
+
+          schema_attr :baz, class: String, settable: true
+        
+          attr_reader :called
+          def schema_attribute_change(attribute, old_value, new_value)
+            @called = { :attr => attribute, :old => old_value, :new => new_value }
+          end
+        end
+      end
+      
+      it "calls the callback when an attribute changes" do
+        bar = Bar.new
+        bar.called.should be_nil
+        bar.baz = "wingle"
+        called = { :attr => :baz, :old => nil, :new => 'wingle' }
+        bar.called.should eq called
+      end
+      
     end
   end
 end

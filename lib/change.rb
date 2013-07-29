@@ -1,3 +1,6 @@
+require 'json'
+require 'time'
+
 # FIXME: put this in a namespace
 class Change
   class Invalid < Exception; end
@@ -59,4 +62,14 @@ class Change
       "%10s : %12s : %s => %s" % fields        
     end
   end
+  
+  private
+    def date(t)
+      t.strftime "%Y/%m/%d %H:%M:%S"
+    end
+    
+    def timescrub(t)
+      Time.new t.year, t.mon, t.day, t.hour, t.min, t.sec, t.utc_offset
+    end
+  
 end
