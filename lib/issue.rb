@@ -1,5 +1,6 @@
 require 'schema'
 require 'change'
+require 'securerandom'
 
 class Issue  
   include Comparable

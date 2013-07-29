@@ -1,6 +1,8 @@
 require 'taco'
+require 'cli'
 require 'fileutils'
 
+LIB_PATH = File.realdirpath "./lib"
 TACO_PATH = File.realdirpath "./bin/taco"
 TMP_PATH = File.realdirpath "./spec/tmp"
 TACORC_PATH = File.join(TMP_PATH, '.taco', '.tacorc')
@@ -13,7 +15,7 @@ def ex(args, opts={:env => {}, :stderr => false})
   
   r, w = IO.pipe
 
-  cmd = "cd #{TMP_PATH} && #{TACO_PATH} #{args}"
+  cmd = "cd #{TMP_PATH} && ruby -I#{LIB_PATH} #{TACO_PATH} #{args}"
   cmd += " 2>&1" if opts[:stderr]
 
   # FIXME: this code can't handle hundreds of lines out output. in that case, it hangs.
