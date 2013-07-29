@@ -201,7 +201,7 @@ describe Issue do
               old_id = issue.id
               old_created_at = issue.created_at
               old_kind = issue.kind
-      
+
               issue.update_from_template! reissue.to_template
               
               issue.id.should eq old_id

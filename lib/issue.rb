@@ -56,18 +56,15 @@ EOT
     self.created_at = attributes[:created_at] || Time.now
     self.updated_at = attributes[:updated_at] || Time.now
     
-    # 
-    # self.issue = Issue::format_attributes issue
-    # 
-    # if changelog.size > 0
-    #   @changelog = changelog.map do |thing|
-    #     if thing.is_a? Change
-    #       thing
-    #     else
-    #       Change.new thing
-    #     end
-    #   end
-    # end
+    if changelog.size > 0
+      @changelog = changelog.map do |thing|
+        if thing.is_a? Change
+          thing
+        else
+          Change.new thing
+        end
+      end
+    end
     
     self
   end
@@ -83,22 +80,6 @@ EOT
     @new
   end
   
-  # def self.set_allowed_values!(attrs=nil)
-  #   if attrs.nil?
-  #     SCHEMA_ATTRIBUTES.each { |attr, data| data.delete(:allowed_values) }
-  #   else
-  #     attrs.each do |attr, values|
-  #       raise ArgumentError.new("Unknown Issue attributes: #{attr}") unless SCHEMA_ATTRIBUTES.include? attr      
-  #     
-  #       if SCHEMA_ATTRIBUTES[attr][:class] == Fixnum
-  #         values.map!(&:to_i)
-  #       end
-  #       
-  #       SCHEMA_ATTRIBUTES[attr][:allowed_values] = values
-  #     end
-  #   end
-  # end
-    
   def <=>(other)
     if self.class.schema_attributes.all? { |attr, opts| self.send(attr) == other.send(attr) }
       r = 0
@@ -233,11 +214,9 @@ EOT
   def update_from_template!(text)
     new_issue = Issue.from_template(text)
     
-    attrs = self.class.schema_attributes.map do |attr, data|
-      if data[:settable]
-        [ attr, new_issue.send(attr) ]
-      else
-        [ attr, self.send(attr) ]
+    attrs = self.class.schema_attributes.map do |attr, opts|
+      if opts[:settable] && self.send(attr) != (new_value = new_issue.send(attr))
+        self.send("#{attr}=", new_value)
       end
     end
 
