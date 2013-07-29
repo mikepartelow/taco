@@ -23,7 +23,6 @@ class TacoCLI
     if File.exist? @tacorc_path
       rc = TacoRc.new @tacorc_path
       rc.update_schema! Issue
-      p Issue.schema_attributes[:kind]
     end
   end
   

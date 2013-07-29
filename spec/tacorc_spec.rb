@@ -4,13 +4,6 @@ require 'schema'
 TMP_PATH = File.realdirpath "./spec/tmp"
 TACORC_PATH = File.join(TMP_PATH, 'tacorc')
 
-class Dingus
-  include Schema
-  
-  schema_attr :stringy, class: String, settable: true
-  schema_attr :inty, class: Fixnum, settable: true 
-end
-
 describe TacoRc do
   let(:tacorc) { <<-EOT.strip
 # comment, followed by a blank line (don't panic)
@@ -23,6 +16,15 @@ EOT
   before do
     FileUtils.mkdir_p(TMP_PATH)    
     open(TACORC_PATH, 'w') { |f| f.write(tacorc) }
+    
+    Object.send(:remove_const, :Dingus) rescue nil
+    
+    class Dingus
+      include Schema
+
+      schema_attr :stringy, class: String, settable: true
+      schema_attr :inty, class: Fixnum, settable: true 
+    end    
   end
   after { FileUtils.rm_rf(TMP_PATH) }      
   
@@ -44,6 +46,9 @@ EOT
       
       open(TACORC_PATH, 'w') { |f| f.write("to_s") }
       expect { TacoRc.new(TACORC_PATH).update_schema! Dingus }.to raise_error(TacoRc::ParseError)      
+      
+      open(TACORC_PATH, 'w') { |f| f.write("schema_attr_update :stringy, default: 99") }
+      expect { TacoRc.new(TACORC_PATH).update_schema! Dingus }.to raise_error(TacoRc::ParseError)            
     end
     
     it "updates a Schema" do

@@ -17,7 +17,13 @@ module Schema
     end]
   end
   
+  def schema_errors
+    @errors || []
+  end
+  
   def valid?
+    @errors = nil
+    
     self.class.schema_attributes.each do |attr, opts|
       if opts[:validate].nil?
         case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
@@ -35,7 +41,10 @@ module Schema
           opts[:validate].call(value)
         end
         
-        return false unless valid
+        unless valid
+          @errors = [ [ attr, value ] ]
+          return false
+        end
       end
     end
     
@@ -48,17 +57,21 @@ module Schema
     end
     
     def schema_attr_remove(name)
+      raise KeyError.new("attribute #{name}: does not exist in class #{self.name}") unless @schema_attrs.include? name      
       @schema_attrs.delete(name)
       self.send(:remove_method, name)
       self.send(:remove_method, "#{name}=".to_s)
     end
     
     def schema_attr_replace(name, opts)
+      raise KeyError.new("attribute #{name}: does not exist in class #{self.name}") unless @schema_attrs.include? name      
       schema_attr_remove(name)
       schema_attr(name, opts)
     end
     
     def schema_attr_update(name, opts)
+      raise KeyError.new("attribute #{name}: does not exist in class #{self.name}") unless @schema_attrs.include? name      
+      raise KeyError.new("attribute #{name}: cannot update non-settable attribute") unless @schema_attrs[name][:settable]
       schema_attr_replace(name, @schema_attrs[name].merge(opts))
     end
     

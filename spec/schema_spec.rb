@@ -31,6 +31,7 @@ describe Schema do
       class ValidByDefaultFoo
         include Schema
 
+        schema_attr :foo, class: String, default: 'abc123', settable: false
         schema_attr :bar, class: String, default: 'abc123', settable: true
         schema_attr :baz, class: String, default: 'x', settable: true, validate: lambda { |v| v !~ /^\s*$/ }
         schema_attr :ick, class: Fixnum, default: 1, settable: true, validate: [1,2,3,4,5]
@@ -203,6 +204,22 @@ describe Schema do
         
         it "is valid by default" do
           foo.should be_valid
+        end
+        
+        describe "error reporting" do
+          it "reports all errors, not only the first encountered"
+
+          it "reports an error" do
+            foo.should be_valid
+            
+            foo.baz = ''
+            foo.should_not be_valid
+            foo.schema_errors.should eq [ [ :baz, '' ] ]
+            
+            foo.baz = 'valid'
+            foo.should be_valid
+            foo.schema_errors.should eq []
+          end
         end
         
         describe "disallowed values" do
@@ -429,12 +446,16 @@ describe Schema do
       end
 
       it "raises when removing a non-existent attribute" do
-        expect { ValidByDefaultFoo.schema_attr_remove :florblezort, default: 42 }.to raise_error(KeyError)
+        expect { ValidByDefaultFoo.schema_attr_remove :florblezort }.to raise_error(KeyError)
       end
       
       it "raises when replacing a non-existent attribute" do
         expect { ValidByDefaultFoo.schema_attr_replace :florblezort, default: 42 }.to raise_error(KeyError)
       end      
+      
+      it "raises when updating a non-settable attribute" do
+        expect { ValidByDefaultFoo.schema_attr_update :foo, default: 42 }.to raise_error(KeyError)
+      end
     end
   end
 end

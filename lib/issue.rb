@@ -133,7 +133,8 @@ EOT
   
   def valid?(opts={})
     valid = schema_valid?
-    raise Invalid.new unless valid || !opts[:raise]
+    error = schema_errors.first
+    raise Invalid.new("attribute #{error.first}: #{error[1].inspect} is not a valid value") if !valid && opts[:raise]
     valid
   end
   
