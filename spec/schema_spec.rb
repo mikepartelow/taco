@@ -27,12 +27,30 @@ describe Schema do
         schema_attr :wizt, class: Fixnum
         schema_attr :wuzt, class: Time
       end
+      
+      class ValidByDefaultFoo
+        include Schema
+
+        schema_attr :bar, class: String, default: 'abc123', settable: true
+        schema_attr :baz, class: String, default: 'x', settable: true, validate: lambda { |v| v !~ /^\s*$/ }
+        schema_attr :ick, class: Fixnum, default: 1, settable: true, validate: [1,2,3,4,5]
+        schema_attr :thud, class: String, default: 'a', settable: true, validate: %w(a b c)          
+        schema_attr :scro, class: Time, default: lambda { THE_TIME }, settable: true
+        schema_attr :frob, class: String, default: 'x', settable: true, transform: false        
+        schema_attr :nart, class: Time, default: lambda { THE_TIME }, settable: true, coerce: false        
+        schema_attr :crud, class: Fixnum, default: 1, settable: true, coerce: false        
+      end      
     end
     
     after do
       Object.send(:remove_const, :Foo)
+      Object.send(:remove_const, :ValidByDefaultFoo)      
       Object.send(:remove_const, :Bar) rescue nil
       Object.send(:remove_const, :Baz) rescue nil            
+    end
+    
+    it "has a schema_attributes class method" do
+      Foo.schema_attributes.sort.should eq [ :bar, :baz, :ick, :thud, :wank, :crud, :frob, :scro, :nart, :wozt, :wizt, :wuzt ].sort
     end
     
     it "creates getters with default value" do
@@ -180,8 +198,8 @@ describe Schema do
         specify { expect { Foo.new.scro = 'abc' }.to raise_error(TypeError) }
       end
       
-      describe "valid?" do
-        let(:foo) { Foo.new }
+      describe "valid?" do                
+        let(:foo) { ValidByDefaultFoo.new }
         
         it "is valid by default" do
           foo.should be_valid
@@ -199,13 +217,33 @@ describe Schema do
           specify { foo.baz = 'hello world'; foo.should be_valid }          
           specify { foo.ick = 3; foo.should be_valid }          
           specify { foo.thud = 'c'; foo.should be_valid }
-        end        
+        end    
+        
+        describe "default validations" do
+          specify { foo.bar = ''; foo.should_not be_valid }
+          specify { foo.bar = '    '; foo.should_not be_valid }
+          specify { foo.bar = "\n  "; foo.should_not be_valid }
+                    
+          describe "disabled validation" do            
+            before do
+              class Baz
+                include Schema
+
+                schema_attr :baz, class: String, settable: true, validate: false
+              end
+            end
+            
+            specify { baz = Baz.new; baz.baz = ''; baz.should be_valid }
+          end
+        end
       end
       
       describe "coercion" do
-        let(:foo) { Foo.new }
+        let(:foo) { ValidByDefaultFoo.new }
+
+        specify { foo.should be_valid }
         
-        it "should coerce String to Fixnum by default" do
+        it "should coerce String to 294 by default" do
           foo.ick = '3'
           foo.should be_valid
           foo.ick.should eq 3
@@ -254,18 +292,20 @@ describe Schema do
       end
       
       describe "transform" do
-        let(:foo) { Foo.new }
+        let(:foo) { ValidByDefaultFoo.new }
+        
+        specify { foo.should be_valid }
         
         it "should strip whitespace from String by default" do
-          foo.wank = "\n   foo bar baz   \n  \t  "
+          foo.bar = "\n   foo bar baz   \n  \t  "
           foo.should be_valid
-          foo.wank.should eq "foo bar baz"
+          foo.bar.should eq "foo bar baz"
         end
         
         it "should not strip whitespace from String when transform is disabled" do
           foo.frob = "\n   foo bar baz   \n  \t  "
-          foo.should be_valid
           foo.frob.should eq "\n   foo bar baz   \n  \t  "
+          # foo.should be_valid          # it is not valid because we didn't override the default validator
         end
         
         it "should do custom transformation" do

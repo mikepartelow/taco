@@ -1,4 +1,4 @@
-require 'taco'
+require 'change'
 
 describe Change do
   let(:valid_change) { Change.new :attribute => :foo, :old_value => 'bar', :new_value => 'baz' }

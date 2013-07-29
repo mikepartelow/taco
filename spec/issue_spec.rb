@@ -1,4 +1,4 @@
-require 'taco'
+require 'issue'
 require 'json'
 
 describe Issue do
@@ -65,7 +65,7 @@ describe Issue do
   end
   
   describe "validation" do    
-    specify { Issue.new.should_not be_valid }
+    specify { Issue.new.should be_valid } # has to be or it's a huge PITA to to change an attr to invalid for testing
     specify { Issue.new(valid_attributes.merge({:summary => ''})).should_not be_valid }
     specify { Issue.new(valid_attributes.merge({:summary => ' '})).should_not be_valid }
     specify { Issue.new(valid_attributes.merge({:summary => "\n"})).should_not be_valid }

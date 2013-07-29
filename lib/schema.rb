@@ -1,5 +1,11 @@
 require 'time'
 
+# Schema characteristics
+#
+# attributes have default validations, coercions, and transformations
+#
+#  FIXME: document
+
 module Schema
   def self.included(base)
     base.extend(ClassMethods)
@@ -7,6 +13,13 @@ module Schema
   
   def valid?
     self.class.instance_variable_get("@schema_attrs").each do |attr, opts|
+      if opts[:validate].nil?
+        case opts[:class].to_s # can't case on opts[:class], because class of opts[:class] is always Class :-)
+        when 'String'
+          opts[:validate] = lambda { |v| v !~ /^\s*$/ }
+        end
+      end
+      
       if opts[:validate]
         value = eval(attr.to_s)
         if opts[:validate].is_a?(Array)
@@ -21,6 +34,10 @@ module Schema
   end
     
   module ClassMethods
+    def schema_attributes
+      @schema_attrs.keys
+    end
+    
     def schema_attr(name, opts)      
       @schema_attrs ||= {}
 
