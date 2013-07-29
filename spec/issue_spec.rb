@@ -90,130 +90,88 @@ describe Issue do
       specify { expect { Issue.new(valid_attributes.merge({:priority => '1x'})) }.to raise_error(TypeError) }
     end
     
-    # describe "set_allowed_values!" do
-          #   after { Issue.set_allowed_values! }
-          #   
-          #   it "should allow only particular values for checked fields" do
-          #     Issue.set_allowed_values! :kind => [ 'Defect', 'Feature Request' ], :priority => [ 1, 2, 3, 4 ]
-          #   
-          #     issue.kind = 'Defect'
-          #     issue.should be_valid
-          # 
-          #     issue.kind = 'Feature Request'
-          #     issue.should be_valid
-          # 
-          #     issue.kind = 'Carmen Miranda'
-          #     issue.should_not be_valid
-          #   
-          #     issue.kind = 'Defect'
-          #     issue.should be_valid
-          #   
-          #     issue.priority = 9
-          #     issue.should_not be_valid
-          #   
-          #     issue.priority = 3
-          #     issue.should be_valid
-          #   
-          #     Issue.set_allowed_values!
-          #     issue.kind = 'Carmen Miranda'
-          #     issue.should be_valid
-          #   end
-          # 
-          #   it "should convert Strings to Fixnums as appropriate in set_allowed_values!" do
-          #     Issue.set_allowed_values! :priority => %w|1 2 3|
-          #   
-          #     issue.priority = 2
-          #     issue.should be_valid
-          #   end
-          # end
-          # 
-          # it "should raise ArgumentError when setting allowed values for unrecognized attributes" do
-          #   expect {
-          #     Issue.set_allowed_values! :foo => [ 'bar', 'baz' ]
-          #   }.to raise_error(ArgumentError)
-          # end
-          
-          it "should not serialize while valid? returns false" do
-            expect {
-              Issue.new(valid_attributes.merge({:summary => "\n"})).to_json
-            }.to raise_error(Issue::Invalid)
-          end
-          
-          it "should raise Invalid when instructed" do
-            expect {
-              Issue.new(valid_attributes.merge({:summary => "\n"})).valid?(:raise => true)
-            }.to raise_error(Issue::Invalid)
-          end
-        end
+              
+    it "should not serialize while valid? returns false" do
+      expect {
+        Issue.new(valid_attributes.merge({:summary => "\n"})).to_json
+      }.to raise_error(Issue::Invalid)
+    end
+    
+    it "should raise Invalid when instructed" do
+      expect {
+        Issue.new(valid_attributes.merge({:summary => "\n"})).valid?(:raise => true)
+      }.to raise_error(Issue::Invalid)
+    end
+  end
+  
+  describe "serialization" do
+    describe "json" do
+      it "should serialize to json" do
+        the_alleged_json = issue.to_json
+        the_alleged_json.should_not be_nil
+        expect { JSON.parse(the_alleged_json) }.to_not raise_error(JSON::ParserError)
+      end
         
-        describe "serialization" do
-          describe "json" do
-            it "should serialize to json" do
-              the_alleged_json = issue.to_json
-              the_alleged_json.should_not be_nil
-              expect { JSON.parse(the_alleged_json) }.to_not raise_error(JSON::ParserError)
-            end
-              
-            it "should serialize from json" do
-              the_json = issue.to_json
-              reissue = Issue.from_json(the_json)
-      
-              reissue.should be_valid
-              Issue.schema_attributes.keys.each do |attr|
-                issue.send(attr).should eq reissue.send(attr)
-              end
-            end
-          end
-          
-          describe "template" do
-            it "should serialize from a template" do
-              text = template % valid_attributes
-            
-              issue = Issue.from_template(text)
-              issue.should be_valid
-            
-              valid_attributes.reject { |attr, value| [ :id, :created_at, :updated_at ].include? attr }.each { |attr, value| issue.send(attr).should eq value }      
-            end
-          
-            it "should raise ArgumentError on unrecognized key/value pairs" do
-              text = "WingleDingle : Forble Zorp\n" + (template % valid_attributes)
-              expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
-            end
-            
-            it "should raise ArgumentError when attempting to set ID" do
-              text = "ID : 123abc\n" + (template % valid_attributes)        
-              expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
-            end
-            
-            it "should raise ArgumentError when attempting to set created_at" do
-              text = "created_at : 123abc\n" + (template % valid_attributes)        
-              expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
-            end
-      
-            it "should raise ArgumentError when attempting to set updated_at" do
-              text = "updated_at : 123abc\n" + (template % valid_attributes)        
-              expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
-            end
-            
-            it "should update from a template" do
-              reissue = Issue.new(valid_attributes.merge({:summary => 'different summary', :description => 'different descr'}))
-              
-              old_id = issue.id
-              old_created_at = issue.created_at
-              old_kind = issue.kind
+      it "should serialize from json" do
+        the_json = issue.to_json
+        reissue = Issue.from_json(the_json)
 
-              issue.update_from_template! reissue.to_template
-              
-              issue.id.should eq old_id
-              issue.created_at.should eq old_created_at
-              issue.summary.should eq 'different summary'
-              issue.description.should eq 'different descr'
-              issue.kind.should eq old_kind        
-              issue.updated_at.should_not eq issue.created_at
-            end
-            
-            it "should perform a more complicated update" do
-              template =<<-EOT.strip
+        reissue.should be_valid
+        Issue.schema_attributes.keys.each do |attr|
+          issue.send(attr).should eq reissue.send(attr)
+        end
+      end
+    end
+    
+    describe "template" do
+      it "should serialize from a template" do
+        text = template % valid_attributes
+      
+        issue = Issue.from_template(text)
+        issue.should be_valid
+      
+        valid_attributes.reject { |attr, value| [ :id, :created_at, :updated_at ].include? attr }.each { |attr, value| issue.send(attr).should eq value }      
+      end
+    
+      it "should raise ArgumentError on unrecognized key/value pairs" do
+        text = "WingleDingle : Forble Zorp\n" + (template % valid_attributes)
+        expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
+      end
+      
+      it "should raise ArgumentError when attempting to set ID" do
+        text = "ID : 123abc\n" + (template % valid_attributes)        
+        expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
+      end
+      
+      it "should raise ArgumentError when attempting to set created_at" do
+        text = "created_at : 123abc\n" + (template % valid_attributes)        
+        expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
+      end
+
+      it "should raise ArgumentError when attempting to set updated_at" do
+        text = "updated_at : 123abc\n" + (template % valid_attributes)        
+        expect { issue = Issue.from_template(text) }.to raise_error(ArgumentError)
+      end
+      
+      it "should update from a template" do
+        reissue = Issue.new(valid_attributes.merge({:summary => 'different summary', :description => 'different descr'}))
+        
+        old_id = issue.id
+        old_created_at = issue.created_at
+        old_kind = issue.kind
+
+        issue.update_from_template! reissue.to_template
+        
+        issue.id.should eq old_id
+        issue.created_at.should eq old_created_at
+        issue.summary.should eq 'different summary'
+        issue.description.should eq 'different descr'
+        issue.kind.should eq old_kind        
+        issue.updated_at.should_not eq issue.created_at
+      end
+      
+      it "should perform a more complicated update" do
+        template =<<-EOT.strip
 Summary     : a summary
 Kind        : a kind
 Status      : a status
@@ -225,16 +183,16 @@ descr1
 descr2
 ---
 EOT
-              issue = Issue.from_template(template)
-              issue.description.should eq "descr1\ndescr2"
-            
-              issue.update_from_template!(template.gsub(/descr2\n---/m, "descr2\ndescr3"))
-              issue.description.should eq "descr1\ndescr2\ndescr3"
-            end
-          end
-            
-          it "raises on non-attribute lines that aren't part of the description" do
-            template =<<-EOT.strip
+        issue = Issue.from_template(template)
+        issue.description.should eq "descr1\ndescr2"
+      
+        issue.update_from_template!(template.gsub(/descr2\n---/m, "descr2\ndescr3"))
+        issue.description.should eq "descr1\ndescr2\ndescr3"
+      end
+    end
+      
+    it "raises on non-attribute lines that aren't part of the description" do
+      template =<<-EOT.strip
 something
 Summary     : a summary
 weird
@@ -246,17 +204,17 @@ Owner       : an owner
 # Everything between the --- lines is Issue Description
 ---
 this describes
- the issue
-   quite well
+the issue
+quite well
 ---
 EOT
-            expect {
-              Issue.from_template template
-            }.to raise_error(ArgumentError)
-          end
-          
-          it "is not disturbed by key:value pairs that appear in the description" do
-            template =<<-EOT.strip
+      expect {
+        Issue.from_template template
+      }.to raise_error(ArgumentError)
+    end
+    
+    it "is not disturbed by key:value pairs that appear in the description" do
+      template =<<-EOT.strip
 Summary     : a summary
 Kind        : a kind
 Status      : a status
@@ -265,22 +223,22 @@ Owner       : an owner
 # Everything between the --- lines is Issue Description
 ---
 this describes
- the issue
- as key: value
+the issue
+as key: value
 key2:value2
 key3 :value3
 key4: value4
 key5 : value5
 keyx:
 :valuex
-   quite well
+quite well
 ---
 EOT
-            Issue.from_template(template).description.count(':').should eq 7
-          end
-          
-          it "strips trailing whitespace from description" do
-            template =<<-EOT
+      Issue.from_template(template).description.count(':').should eq 7
+    end
+    
+    it "strips trailing whitespace from description" do
+      template =<<-EOT
 Summary     : a summary
 Kind        : a kind
 Status      : a status
@@ -293,9 +251,9 @@ l2
 
 ---
 EOT
-            Issue.from_template(template).description.should_not end_with("\n")
-          end
-        end
+      Issue.from_template(template).description.should_not end_with("\n")
+    end
+  end
   
   describe "initialization" do
     it "raises on unknown attributes" do

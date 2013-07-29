@@ -378,11 +378,51 @@ describe Schema do
       end
       
     end
+
+    describe "dynamic modification of attributes" do    
+      it "adds an attribute" do
+        ValidByDefaultFoo.new.should_not respond_to :glarb
+        ValidByDefaultFoo.schema_attr :glarb, class: String
+        ValidByDefaultFoo.new.should respond_to :glarb
+      end
+      
+      it "removes an attribute" do
+        ValidByDefaultFoo.new.should respond_to :bar
+        ValidByDefaultFoo.new.should respond_to :bar=
+        
+        ValidByDefaultFoo.schema_attr_remove :bar
+        
+        ValidByDefaultFoo.new.should_not respond_to :bar        
+        ValidByDefaultFoo.new.should_not respond_to :bar=        
+      end
+      
+      it "replaces an attribute" do
+        ValidByDefaultFoo.new.should respond_to :bar
+        ValidByDefaultFoo.new.bar.class.should eq String        
+        ValidByDefaultFoo.schema_attr_replace :bar, class: Fixnum
+        ValidByDefaultFoo.new.should respond_to :bar
+        ValidByDefaultFoo.new.bar.class.should eq Fixnum        
+      end
+      
+      it "updates an attribute" do
+        foo = ValidByDefaultFoo.new
+        foo.ick = 2
+        foo.should be_valid
+        
+        ValidByDefaultFoo.schema_attr_update :ick, validate: [ 9, 10, 11 ]
+        foo = ValidByDefaultFoo.new
+        foo.ick = 2
+        foo.should_not be_valid
+        
+        foo = ValidByDefaultFoo.new
+        foo.ick.should eq 1
+        foo.should_not be_valid
+        
+        ValidByDefaultFoo.schema_attr_update :ick, default: 11
+        foo = ValidByDefaultFoo.new
+        foo.ick.should eq 11
+        foo.should be_valid                
+      end
+    end
   end
 end
-
-__END__
-
-.to_hash
-attributes? maybe class needs attr_reader :schema_attrs (in which case stop calling instance_variable_get): nah, then we could write to opts
-"runtime" updating (aka set_allowed_values).  maybe a schema_attr_remove?

@@ -47,6 +47,21 @@ module Schema
       @schema_attrs
     end
     
+    def schema_attr_remove(name)
+      @schema_attrs.delete(name)
+      self.send(:remove_method, name)
+      self.send(:remove_method, "#{name}=".to_s)
+    end
+    
+    def schema_attr_replace(name, opts)
+      schema_attr_remove(name)
+      schema_attr(name, opts)
+    end
+    
+    def schema_attr_update(name, opts)
+      schema_attr_replace(name, @schema_attrs[name].merge(opts))
+    end
+    
     def schema_attr(name, opts)      
       @schema_attrs ||= {}
 
