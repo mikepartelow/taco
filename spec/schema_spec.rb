@@ -423,6 +423,18 @@ describe Schema do
         foo.ick.should eq 11
         foo.should be_valid                
       end
+      
+      it "raises when updating a non-existent attribute" do
+        expect { ValidByDefaultFoo.schema_attr_update :florblezort, default: 42 }.to raise_error(KeyError)
+      end
+
+      it "raises when removing a non-existent attribute" do
+        expect { ValidByDefaultFoo.schema_attr_remove :florblezort, default: 42 }.to raise_error(KeyError)
+      end
+      
+      it "raises when replacing a non-existent attribute" do
+        expect { ValidByDefaultFoo.schema_attr_replace :florblezort, default: 42 }.to raise_error(KeyError)
+      end      
     end
   end
 end

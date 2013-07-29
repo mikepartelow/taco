@@ -1,11 +1,10 @@
 #!/bin/env ruby
 
-require 'taco'
 require 'cli'
 
 begin
-  cli = TacoCLI.new(Taco.new)
-rescue TacoCLI::ParseError => e
+  cli = TacoCLI.new
+rescue TacoRc::ParseError => e
   puts "Parse error while reading .tacorc: #{e}"
   exit 1
 end

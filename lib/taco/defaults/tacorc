@@ -1,0 +1,10 @@
+# Empty lines and lines beginning with # will be ignored.
+#
+
+#
+# schema_attr_update <attribute name>, [ default: <default attribute value> ], [ validate: <list of type-correct valid values, or lambda validator> ]
+#
+
+schema_attr_update :kind, default: 'Defect', validate: [ 'Defect', 'FeatReq' ]
+schema_attr_update :status, default: 'Open', validate: [ 'Open', 'Closed' ]
+schema_attr_update :priority, default: 3, validate: [ 1, 2, 3, 4, 5 ]

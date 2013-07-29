@@ -9,6 +9,8 @@ BUGS
                         
 FEATURES
 ---
+- case insensitive searching
+
 - Issue.set_allowed_values! should also alter SCHEMA_ATTRIBUTES[:x][:default] (and be renamed)
 
 - jquery tablesorter for index.html

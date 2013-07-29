@@ -1,46 +1,39 @@
+require 'issue'
+require 'taco'
+require 'tacorc'
+
 class TacoCLI
-  RC_NAME = '.tacorc'
-  RC_TEXT =<<-EOT.strip
-# Empty lines and lines beginning with # will be ignored.
-#
-# comma separated list of valid values for Issue fields
-#
-Kind = Defect, Feature Request
-Status = Open, Closed
-Priority = 1, 2, 3, 4, 5
-
-# Default values for Issue fields
-#
-DefaultKind = Defect
-DefaultStatus = Open
-DefaultPriority = 3
-EOT
   RETRY_NAME = '.taco_retry.txt'
-  INDEX_ERB_NAME = '.index.html.erb'
-  INDEX_ERB_SRC_PATH = File.realpath(File.join(File.dirname(__FILE__), '../lib/taco/defaults/index.html.erb'))  
 
-  class ParseError < Exception; end
+  TACORC_NAME = '.tacorc'
+  INDEX_ERB_NAME = '.index.html.erb'
   
-  def initialize(taco=nil)
-    @taco = taco || Taco.new
+  DEFAULT_TACORC_NAME = 'tacorc'
+  DEFAULT_INDEX_ERB_NAME = 'index.html.erb'
+  DEFAULTS_HOME = File.realpath(File.join(File.dirname(__FILE__), '../lib/taco/defaults/'))
+  
+  def initialize
+    @taco = Taco.new
     
     @retry_path = File.join(@taco.home, RETRY_NAME)
-    
-    @rc_path = File.join(@taco.home, RC_NAME)
-    @config = parse_rc
-    
+
+    @tacorc_path = File.join(@taco.home, TACORC_NAME)
     @index_erb_path = File.join(@taco.home, INDEX_ERB_NAME)
     
-    # Issue.set_allowed_values! @config[:allowed]
+    if File.exist? @tacorc_path
+      rc = TacoRc.new @tacorc_path
+      rc.update_schema! Issue
+      p Issue.schema_attributes[:kind]
+    end
   end
   
   def init!
     out = @taco.init!
-    open(@rc_path, 'w') { |f| f.write(RC_TEXT) }
+
+    FileUtils.copy(File.join(DEFAULTS_HOME, DEFAULT_TACORC_NAME), @tacorc_path)    
+    FileUtils.copy(File.join(DEFAULTS_HOME, DEFAULT_INDEX_ERB_NAME), @index_erb_path)
     
-    FileUtils.copy(INDEX_ERB_SRC_PATH, @index_erb_path)
-    
-    out + "\nPlease edit the config file at #{@rc_path}"
+    out + "\nPlease edit the config file at #{@tacorc_path}"
   end
 
   def list(args)
@@ -56,7 +49,7 @@ EOT
       raise ArgumentError.new("No previous Issue edit session was found.") unless File.exist?(@retry_path)      
       { :template => open(@retry_path) { |f| f.read } }
     elsif args.size == 0
-      { :template => (Issue.new.to_template % @config[:defaults]) }
+      { :template => Issue.new.to_template }
     elsif args.size == 1
       { :from_file => args[0] }
     end
@@ -94,7 +87,7 @@ EOT
   
   def template(opts)
     if opts[:defaults]
-      (Issue::TEMPLATE % @config[:defaults]).strip
+      (Issue::TEMPLATE % Issue.new.to_hash).strip
     else
       Issue::TEMPLATE.gsub(/%{.*?}/, '').strip
     end
@@ -112,42 +105,4 @@ EOT
     cmd = "git add . && git commit -am '#{opts[:message]}' && git push"
     system(cmd)
   end
-      
-  private  
-    def parse_rc
-      defaults = Hash[Issue.schema_attributes.select { |attr, opts| opts[:settable] }.map { |attr, opts| [ attr, nil ] } ] 
-      config = { :defaults => defaults, :allowed => {} }
-      
-      def set_attr(hash, what, attr, value, line)
-        if data = Issue.schema_attributes[attr]
-          if data[:settable]
-            hash[attr] = value
-          else
-            raise ParseError.new("Cannot set #{what} for write-protected Issue attribute '#{attr}' on line #{line}")
-          end
-        else
-          raise ParseError.new("Unknown Issue attribute '#{attr}' on line #{line}")
-        end
-      end
-      
-      if File.exist? @rc_path
-        open(@rc_path) do |f|
-          f.readlines.each_with_index do |line, index|
-            next if line =~ /^#/ || line =~ /^\s*$/            
-            
-            if line =~ /^Default(\w+)\s+=\s+(\w+)/
-              attr, value = $1.strip.downcase.to_sym, $2.strip
-              set_attr(config[:defaults], 'default', attr, value, index+1)
-            elsif line =~ /^(\w+)\s*=\s*(.*)$/
-              attr, values = $1.strip.downcase.to_sym, $2.split(',').map(&:strip)
-              set_attr(config[:allowed], 'allowed values', attr, values, index+1)
-            else
-              raise ParseError.new("Unparseable stuff on line #{index+1}")
-            end
-          end
-        end
-      end
-
-      config
-    end 
 end

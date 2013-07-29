@@ -304,6 +304,7 @@ EOT
           issue = taco.read(issue_id)
           issue.to_s.should_not include '%{kind}'        
           issue.to_s.should include 'KindNumber2'
+          puts issue.to_s
         end
       end
     

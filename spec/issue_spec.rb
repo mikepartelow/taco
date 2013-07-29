@@ -417,17 +417,18 @@ EOT
 # New Issue
 #
 # Lines beginning with # will be ignored.
-Summary     : %{summary}
-Kind        : %{kind}
-Status      : %{status}
-Priority    : %{priority}
-Owner       : %{owner}
+Summary     : 
+Kind        : 
+Status      : 
+Priority    : 0
+Owner       : 
 
 # Everything between the --- lines is Issue Description
 ---
-%{description}
+
 ---
 EOT
+
       Issue.new.to_template.should eq new_issue_template
     end
     

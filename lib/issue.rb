@@ -18,7 +18,7 @@ class Issue
   schema_attr :kind,        class: String,      settable: true
   schema_attr :status,      class: String,      settable: true
   schema_attr :owner,       class: String,      settable: true
-  schema_attr :priority,    class: Fixnum,      settable: true,   validate: [ 1, 2, 3, 4, 5 ]
+  schema_attr :priority,    class: Fixnum,      settable: true
   schema_attr :description, class: String,      settable: true
     
   TEMPLATE =<<-EOT.strip
@@ -146,7 +146,7 @@ EOT
   def to_template
     if new?
       header = "# New Issue\n#"
-      body = TEMPLATE
+      body = TEMPLATE % self.to_hash
       footer = ""
     else
       header =<<-EOT
