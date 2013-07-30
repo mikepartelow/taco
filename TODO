@@ -10,13 +10,11 @@ BUGS
                         
 FEATURES
 ---
+- don't report validation problems one at a time, report all of them at once
+
 - case insensitive searching
 
-- Issue.set_allowed_values! should also alter SCHEMA_ATTRIBUTES[:x][:default] (and be renamed)
-
 - jquery tablesorter for index.html
-
-- move default RC to defaults dir
 
 - user-specifiable (via .tacorc and CL switches) column list for "taco list"
 - user-specifiable (via .tacorc and CL switches) sort order for "taco list"
@@ -25,12 +23,8 @@ FEATURES
 - CHANGELOG file
 - comments
 - ri/rdoc
-- clean up issue=.  maybe create a magic hash class that does field validation and changelog in []  
-   (or is that what Issue is supposed to be doing?)
 - 4.0 on codeclimate
-- don't report validation problems one at a time, report all of them at once
 - user-specified Issue attributes via .tacorc
-- Text vs. String type: one has newlines, the other doesn't
 - bash completion: http://fahdshariff.blogspot.com/2011/04/writing-your-own-bash-completion.html
                  : http://www.debian-administration.org/article/An_introduction_to_bash_completion_part_2
 				 : http://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
@@ -51,9 +45,3 @@ TODO:
 
 - don't bypass commander's exception handler, fix it and use it.
   - fix problems with commander and send patch to owner (clone to taco until gem suffices)
-
-- dsl for attributes: attr :id, :class => String, :required => true, :settable => false
-                      => creates setter/getter and validators
-                      perhaps a different dsl for taco vs user attrs: id vs kind
-
-- some way of constraining Change :attribute to Issue::SCHEMA_ATTRIBUTES
