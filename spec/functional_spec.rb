@@ -580,6 +580,14 @@ EOT
       out.should_not include 'summaryXYZ'
       out.should include 'summary2'
     end
+      
+    it "filters by priority" do
+      taco.write! FactoryGirl.build(:issue, :summary => 'summaryXYZ', :kind => 'kind2', :owner => 'owner3', :priority => 5)
+      
+      r, out = ex 'list priority:5'
+      r.should eq 0
+      out.should include 'summaryXYZ'
+    end
     
     it "filters by attribute with spaces"
     it "filters by attribute with wildcard"    

@@ -200,6 +200,12 @@ describe Taco do
         it "filters Issues" do
           taco.list(:filters => [ 'kind:kind2' ]).should eq [ issues[1] ]
         end
+        
+        it "filters Fixnum attributes" do
+          issue = FactoryGirl.build(:issue, :summary => 'summary99', :priority => 99)
+          taco.write! issue
+          taco.list(:filters => [ 'priority:99' ]).should eq [ issue ]
+        end
       end      
     end
   end
