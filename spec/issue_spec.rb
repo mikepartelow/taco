@@ -1,4 +1,4 @@
-require 'issue'
+require 'taco/issue'
 require 'json'
 
 def date(t)

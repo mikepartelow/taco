@@ -1,6 +1,6 @@
-require 'issue'
-require 'taco'
-require 'tacorc'
+require 'taco/issue'
+require 'taco/taco'
+require 'taco/tacorc'
 
 class TacoCLI
   RETRY_NAME = '.taco_retry.txt'
@@ -10,7 +10,7 @@ class TacoCLI
   
   DEFAULT_TACORC_NAME = 'tacorc'
   DEFAULT_INDEX_ERB_NAME = 'index.html.erb'
-  DEFAULTS_HOME = File.realpath(File.join(File.dirname(__FILE__), '../lib/taco/defaults/'))
+  DEFAULTS_HOME = File.realpath(File.join(File.dirname(__FILE__), 'defaults/'))
   
   def initialize
     @taco = Taco.new

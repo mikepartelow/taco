@@ -1,5 +1,5 @@
-require 'tacorc'
-require 'schema'
+require 'taco/tacorc'
+require 'taco/schema'
 
 
 describe TacoRc do

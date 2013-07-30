@@ -1,5 +1,5 @@
-require 'taco'
-require 'cli'
+require 'taco/taco'
+require 'taco/cli'
 require 'fileutils'
 
 def date(t)

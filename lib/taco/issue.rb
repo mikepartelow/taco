@@ -1,5 +1,5 @@
-require 'schema'
-require 'change'
+require 'taco/schema'
+require 'taco/change'
 require 'securerandom'
 
 class Issue  

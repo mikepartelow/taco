@@ -1,4 +1,4 @@
-require 'schema'
+require 'taco/schema'
 
 THE_TIME = Time.new 2007, 5, 23, 3, 25, 0, "-07:00"
 

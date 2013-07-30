@@ -2,7 +2,7 @@ require 'tempfile'
 require 'fileutils'
 require 'time'
 
-require 'issue'
+require 'taco/issue'
 
 class Taco
   HOME_DIR = '.taco'

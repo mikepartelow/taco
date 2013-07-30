@@ -6,6 +6,7 @@ BUGS
                         have an interactive mode instead of [1.2.3]
                         gem list -r taco_it -a
 - FIXMEs
+- taco show: changelog is upside down ;)
                         
 FEATURES
 ---
