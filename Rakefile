@@ -8,7 +8,7 @@ end
 
 task :release, [:version] do |t, args|
   GEMSPEC_PATH = 'taco.gemspec'
-  TACO_RB_PATH = 'lib/taco.rb'
+  TACO_RB_PATH = 'bin/taco'
   
   new_version = args[:version]
   

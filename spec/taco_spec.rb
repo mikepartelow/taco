@@ -1,4 +1,4 @@
-require 'taco'
+require 'taco/taco'
 require 'fileutils'
 
 describe Taco do

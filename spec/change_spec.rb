@@ -1,4 +1,9 @@
-require 'taco'
+require 'taco/change'
+
+def date(t)
+  t.strftime "%Y/%m/%d %H:%M:%S"
+end
+
 
 describe Change do
   let(:valid_change) { Change.new :attribute => :foo, :old_value => 'bar', :new_value => 'baz' }

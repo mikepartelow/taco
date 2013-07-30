@@ -6,9 +6,12 @@ BUGS
                         have an interactive mode instead of [1.2.3]
                         gem list -r taco_it -a
 - FIXMEs
+- taco show: changelog is upside down ;)
                         
 FEATURES
 ---
+- case insensitive searching
+
 - Issue.set_allowed_values! should also alter SCHEMA_ATTRIBUTES[:x][:default] (and be renamed)
 
 - jquery tablesorter for index.html

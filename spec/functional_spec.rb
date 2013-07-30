@@ -1,11 +1,10 @@
-require 'taco'
+require 'taco/taco'
+require 'taco/cli'
 require 'fileutils'
 
-TACO_PATH = File.realdirpath "./bin/taco"
-TMP_PATH = File.realdirpath "./spec/tmp"
-TACORC_PATH = File.join(TMP_PATH, '.taco', '.tacorc')
-EDITOR_PATH = File.realdirpath "./spec/editor.rb"
-EDITOR_WRITE_PATH = File.join(TMP_PATH, 'editor_output.txt')
+def date(t)
+  t.strftime "%Y/%m/%d %H:%M:%S"
+end
 
 def ex(args, opts={:env => {}, :stderr => false})
   opts[:env] ||= {}
@@ -13,7 +12,7 @@ def ex(args, opts={:env => {}, :stderr => false})
   
   r, w = IO.pipe
 
-  cmd = "cd #{TMP_PATH} && #{TACO_PATH} #{args}"
+  cmd = "cd #{TMP_PATH} && ruby -I#{LIB_PATH} #{TACO_PATH} #{args}"
   cmd += " 2>&1" if opts[:stderr]
 
   # FIXME: this code can't handle hundreds of lines out output. in that case, it hangs.
@@ -59,8 +58,8 @@ EOT
       out.should include taco.home
       File.exists?(taco.home).should be_true
       
-      out.should include TacoCLI::RC_NAME   
-      File.exists?(File.join(taco.home, TacoCLI::RC_NAME)).should be_true      
+      out.should include TacoCLI::TACORC_NAME   
+      File.exists?(File.join(taco.home, TacoCLI::TACORC_NAME)).should be_true      
       File.exists?(File.join(taco.home, TacoCLI::INDEX_ERB_NAME)).should be_true      
     end    
   end
@@ -216,59 +215,22 @@ EOT
       describe "parse failure" do
         after { FileUtils.rm_rf(TMP_PATH) }
         
-        it "handles unknown defaults" do
-          open(TACORC_PATH, 'w') { |f| f.write("DefaultFoo = Bar") }
+        it "handles unknown attrs" do
+          open(TACORC_PATH, 'w') { |f| f.write("schema_attr_update :foo, default: 3") }
           r, out = ex 'list'
           r.should_not eq 0
-          out.should include "Unknown Issue attribute 'foo' on line 1"
+          out.should include "line 1"
+          out.should include "attribute foo"
         end
         
-        it "handles unknown allowed values" do
-          open(TACORC_PATH, 'w') { |f| f.write("Foo = Bar, Baz, Ick") }
-          r, out = ex 'list'
-          r.should_not eq 0
-          out.should include "Unknown Issue attribute 'foo' on line 1"
-        end
-
         it "does not allow defaults for non-settable attrs" do
-          open(TACORC_PATH, 'w') { |f| f.write("DefaultId = Bar") }
+          open(TACORC_PATH, 'w') { |f| f.write("schema_attr_update :id, default: 'abc'") }
           r, out = ex 'list'
           r.should_not eq 0
-          out.should include "Cannot set default for write-protected Issue attribute 'id' on line 1"
+          out.should include "line 1"
+          out.should include "cannot update non-settable"
         end
-        
-        it "does not allow acceptable values for non-settable attrs" do
-          open(TACORC_PATH, 'w') { |f| f.write("Id = Bar, Baz, Ick") }
-          r, out = ex 'list'
-          r.should_not eq 0
-          out.should include "Cannot set allowed values for write-protected Issue attribute 'id' on line 1"
-        end
-                  
-        it "handles comments" do
-          open(TACORC_PATH, 'w') { |f| f.write("#DefaultKind = Whiffle") }
-          r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
-          issue_id = out.split("Created Issue ")[1]
-
-          issue = taco.read(issue_id)
-          issue.kind.should_not eq 'Whiffle'
-        end
-        
-        it "handles whitespace" do
-          open(TACORC_PATH, 'w') { |f| f.write("\n\n\nDefaultKind = Whiffle") }
-          r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH }
-          issue_id = out.split("Created Issue ")[1]
-
-          issue = taco.read(issue_id)
-          issue.kind.should eq 'Whiffle'
-        end          
-
-        it "handles gibberish" do
-          open(TACORC_PATH, 'w') { |f| f.write("gibblegubble") }
-          r, out = ex 'list'
-          r.should_not eq 0
-          out.should include 'Unparseable stuff on line 1'
-        end
-      end
+      end                          
       
       it "creates a default .tacorc" do
         FileUtils.rm_rf(TMP_PATH)
@@ -282,9 +244,8 @@ EOT
     
     describe "with tacorc" do
       let(:tacorc) { <<-EOT.strip
-Kind = KindNumber1, KindNumber2, KindNumber3
-Priority = 1, 2, 3, 4, 5
-DefaultKind = KindNumber2
+schema_attr_update :kind, default: 'KindNumber2', validate: [ 'KindNumber1', 'KindNumber2', 'KindNumber3' ]
+schema_attr_update :priority, validate: [ 1, 2, 3, 4, 5 ]
 EOT
       }
       
@@ -309,7 +270,7 @@ EOT
         it "doesn't allow disallowed-value values" do
           r, out = ex 'new %s' % issue_path
           r.should_not eq 0
-          out.should include "is not an allowed value for Kind"
+          out.should include '"Defect" is not a valid value'
         end
 
         it "doesn't allow changing read-only fields" do
@@ -327,7 +288,7 @@ EOT
 
           r, out = ex 'new %s' % issue_path
           r.should_not eq 0
-          out.should include "Empty string is not allowed for summary"          
+          out.should include 'attribute summary: "" is not a valid value'
         end
         
         it "doesn't allow unknown fields" do
@@ -345,7 +306,7 @@ EOT
 
           r, out = ex 'new %s' % issue_path
           r.should_not eq 0
-          out.should include "99 is not an allowed value for Priority"                    
+          out.should include "attribute priority: 99 is not a valid value"
         end                  
       end
     end
@@ -438,8 +399,7 @@ EOT
   
   describe "template" do
     let(:tacorc) { <<-EOT.strip
-Kind = KindNumber1, KindNumber2, KindNumber3
-DefaultKind = KindNumber2
+schema_attr_update :kind, default: 'KindNumber2', validate: [ 'KindNumber1', 'KindNumber2', 'KindNumber3' ]
 EOT
     }
 
@@ -459,7 +419,7 @@ EOT
     it "displays the Issue template with defaults" do
       r, out = ex 'template -d'
       r.should eq 0
-      out.should eq template.gsub(/%{kind}/, 'KindNumber2').gsub(/%{.*?}/, '').strip
+      out.should eq template.gsub(/%{kind}/, 'KindNumber2').gsub(/%{priority}/, '0').gsub(/%{.*?}/, '').strip
     end
   end  
   
@@ -467,7 +427,7 @@ EOT
     before do
       taco.init!
       taco.write! issues      
-      open(TACORC_PATH, 'w') { |f| f.write("Kind = NotBogus1, NotBogus2") }
+      open(TACORC_PATH, 'w') { |f| f.write("schema_attr_update :kind, validate: [ 'NotBogus1', 'NotBogus2' ]") }
     end
     
     after { FileUtils.rm_rf(TMP_PATH) }
@@ -476,7 +436,7 @@ EOT
       it "allows editor retry after failed validation in interactive mode" do
         r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
         r.should_not eq 0
-        out.should include "is not an allowed value for Kind"
+        out.should include 'attribute kind: "BOGUS" is not a valid value'
         out.should include "--retry"
 
         r, out = ex 'new --retry', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
@@ -496,7 +456,7 @@ EOT
         # a valid retry
         r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
         r.should_not eq 0
-        out.should include "is not an allowed value for Kind"
+        out.should include 'attribute kind: "BOGUS" is not a valid value'
         out.should include "--retry"
 
         r, out = ex 'new --retry' % issue_path, :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
@@ -526,7 +486,7 @@ EOT
 
         r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is edited sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
         r.should_not eq 0
-        out.should include "is not an allowed value for Kind"
+        out.should include 'attribute kind: "BOGUS" is not a valid value'
         out.should include "--retry"
 
         r, out = ex "edit #{issue.id} --retry", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
@@ -545,7 +505,7 @@ EOT
         
         r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
         r.should_not eq 0
-        out.should include "is not an allowed value for Kind"
+        out.should include 'attribute kind: "BOGUS" is not a valid value'
         out.should include "--retry"
 
         r, out = ex "edit #{issue.id}", :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_FIELD_KIND' => 'NotBogus2' }
