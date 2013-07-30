@@ -13,3 +13,11 @@ RSpec.configure do |config|
   #     --seed 1234
   config.order = 'random'
 end
+
+LIB_PATH = File.realdirpath "./lib"
+TACO_PATH = File.realdirpath "./bin/taco"
+TMP_PATH = File.realdirpath "./spec/tmp"
+TACO_HOME_PATH = File.join(TMP_PATH, '.taco')
+TACORC_PATH = File.join(TACO_HOME_PATH, '.tacorc')
+EDITOR_PATH = File.realdirpath "./spec/editor.rb"
+EDITOR_WRITE_PATH = File.join(TMP_PATH, 'editor_output.txt')

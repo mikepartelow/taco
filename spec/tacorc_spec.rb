@@ -1,8 +1,6 @@
 require 'tacorc'
 require 'schema'
 
-TMP_PATH = File.realdirpath "./spec/tmp"
-TACORC_PATH = File.join(TMP_PATH, 'tacorc')
 
 describe TacoRc do
   let(:tacorc) { <<-EOT.strip
@@ -14,7 +12,7 @@ EOT
   }
 
   before do
-    FileUtils.mkdir_p(TMP_PATH)    
+    FileUtils.mkdir_p(TACO_HOME_PATH)    
     open(TACORC_PATH, 'w') { |f| f.write(tacorc) }
     
     Object.send(:remove_const, :Dingus) rescue nil

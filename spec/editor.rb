@@ -23,7 +23,7 @@ else
   
   text = open(template_path, 'r') { |f| f.read }
   text = text.lines.map do |line|
-    if line =~ /^(\w+)\s*:\s*$/
+    if line =~ /^(\w+)\s*:\s*$/      
       if value = ENV["EDITOR_FIELD_#{$1.upcase}"]
         "#{$1} : #{value}"
       elsif $1 == 'Priority'
@@ -34,9 +34,15 @@ else
     elsif line =~ /^(\w+)\s*:\s*(\w+)$/
       if value = ENV["EDITOR_FIELD_#{$1.upcase}"]
         "#{$1} : #{value}"
+      elsif $1 == 'Priority'
+        "#{$1} : 3"
       else
         line
       end      
+    elsif line =~ /^(\w+)\s*:\s*(\d+)$/
+      if $1 == 'Priority'
+        "#{$1} : 3"
+      end
     elsif line =~ /^---$/
       delimiters += 1
       if delimiters == 2

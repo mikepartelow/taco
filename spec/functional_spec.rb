@@ -2,13 +2,6 @@ require 'taco'
 require 'cli'
 require 'fileutils'
 
-LIB_PATH = File.realdirpath "./lib"
-TACO_PATH = File.realdirpath "./bin/taco"
-TMP_PATH = File.realdirpath "./spec/tmp"
-TACORC_PATH = File.join(TMP_PATH, '.taco', '.tacorc')
-EDITOR_PATH = File.realdirpath "./spec/editor.rb"
-EDITOR_WRITE_PATH = File.join(TMP_PATH, 'editor_output.txt')
-
 def date(t)
   t.strftime "%Y/%m/%d %H:%M:%S"
 end
@@ -270,7 +263,6 @@ EOT
           issue = taco.read(issue_id)
           issue.to_s.should_not include '%{kind}'        
           issue.to_s.should include 'KindNumber2'
-          puts issue.to_s
         end
       end
     
@@ -444,7 +436,6 @@ EOT
       it "allows editor retry after failed validation in interactive mode" do
         r, out = ex 'new', :env => { 'EDITOR' => EDITOR_PATH, 'EDITOR_APPEND' => "\n\nthis is new issue sparta!", 'EDITOR_FIELD_KIND' => 'BOGUS' }
         r.should_not eq 0
-        puts out
         out.should include 'attribute kind: "BOGUS" is not a valid value'
         out.should include "--retry"
 
