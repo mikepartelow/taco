@@ -92,6 +92,47 @@ EOT
       r.should eq 0
       out.should =~ /Found no issues./
     end
+    
+    describe "sorting" do      
+      it "sorts by the given attributes" do
+        i1, i2, i3, i4, i5, i6 = [
+          FactoryGirl.build(:issue, :summary => 'summary2', :kind => 'kind2', :owner => 'owner3', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary1', :kind => 'kind3', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary3', :kind => 'kind1', :owner => 'owner1', :priority => 3),      
+
+          FactoryGirl.build(:issue, :summary => 'summary4', :kind => 'kind6', :owner => 'owner1', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary5', :kind => 'kind5', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary6', :kind => 'kind4', :owner => 'owner3', :priority => 3),      
+        ]
+      
+        FileUtils.rm_rf(taco.home)
+        taco.init!
+        taco.write! [ i1, i2, i3, i4, i5, i6 ]
+      
+        r, out = ex 'list --sort priority,owner,kind'
+        r.should eq 0
+        [ i4, i1, i2, i5, i3, i6 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end
+        
+        r, out = ex 'list --sort kind,priority,owner'
+        r.should eq 0
+        [ i3, i1, i2, i6, i5, i4 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end        
+
+        r, out = ex 'list --sort priority,kind,owner'
+        r.should eq 0
+        [ i1, i4, i2, i5, i3, i6 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end        
+      end
+      
+      it "gives a nice error message for unknown attributes"
+      
+      it "sorts asc or desc as given"
+    end
+        
   end
   
   describe "show" do    

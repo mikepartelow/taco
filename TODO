@@ -11,14 +11,14 @@ BUGS
                         
 FEATURES
 ---
+- user-specifiable (via .tacorc and CL switches) sort order for "taco list"
+- user-specifiable (via .tacorc and CL switches) column list for "taco list"
+
 - don't report validation problems one at a time, report all of them at once
 
 - jquery tablesorter for index.html
 
-- user-specifiable (via .tacorc and CL switches) column list for "taco list"
-- user-specifiable (via .tacorc and CL switches) sort order for "taco list"
 
-- make priority part of default sort order
 - CHANGELOG file
 - comments
 - ri/rdoc

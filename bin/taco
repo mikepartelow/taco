@@ -12,7 +12,7 @@ end
 require 'commander/import'
 
 program :name, 'taco'
-program :version, '1.4.0'
+program :version, '1.4.2'
 program :description, 'simple command line issue tracking'
 
 command :init do |c|
@@ -36,13 +36,17 @@ command :list do |c|
   c.summary = 'list all issues in the repository'
   c.description = 'List all taco Issues in the current repository'
   
+  c.option '--sort STRING', String, 'sort results by the given attributes'
+  
+  c.example 'Sort Issues by Priority, Owner, and Kind', 'taco list --sort priority,owner,kind'
+  
   c.action do |args, options|
     begin
       # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
       unless args.all? { |arg| arg =~ /\w+:\w+/ }
         raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}")
       end
-      puts cli.list args
+      puts cli.list args, :sort => options.sort
     rescue Exception => e
       puts "Error: #{e}"
       exit 1

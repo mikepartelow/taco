@@ -35,10 +35,30 @@ class TacoCLI
     out + "\nPlease edit the config file at #{@tacorc_path}"
   end
 
-  def list(args)
-    the_list = @taco.list(:short_ids => true, :filters => args).map do |issue, short_id| 
+  def list(args, opts)
+    the_list = @taco.list(:short_ids => true, :filters => args)
+    
+    if opts[:sort]
+      attrs = opts[:sort].split(',').map(&:to_s)
+      
+      the_list.sort! do |lhs, rhs|
+        issue_a, issue_b = lhs[0], rhs[0]
+
+        order = 0
+        
+        attrs.take_while do |attr|
+          order = issue_a.send(attr) <=> issue_b.send(attr)
+          order == 0
+        end
+                
+        order
+      end
+    end
+    
+    the_list.map! do |issue, short_id| 
       "#{short_id} : #{issue.priority} : #{issue.summary}"
     end
+    
     return "Found no issues." unless the_list.size > 0
     the_list.join("\n")
   end
