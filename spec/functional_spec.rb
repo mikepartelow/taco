@@ -571,6 +571,12 @@ EOT
       r.should eq 0
       out.should include 'summary2'      
     end
+
+    it "filters by attribute case-insensitive" do
+      r, out = ex 'list kind:Kind2'
+      r.should eq 0
+      out.should include 'summary2'      
+    end
     
     it "filters by multiple attributes" do
       taco.write! FactoryGirl.build(:issue, :summary => 'summaryXYZ', :kind => 'kind2', :owner => 'owner3')

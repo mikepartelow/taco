@@ -67,7 +67,7 @@ class Taco
     filter_match = if opts.fetch(:filters, []).size > 0
       conditions = opts[:filters].map do |filter|
         attr, val = filter.split(':')
-        %Q|i.send("#{attr}").to_s == "#{val}"|
+        %Q|i.send("#{attr}").to_s.downcase == "#{val.downcase}"|
       end.join ' && '
       
       # FIXME: eval-ing user input? madness!
