@@ -156,11 +156,10 @@ describe Taco do
         taco.list.should eq issues.sort_by(&:id)
       end
             
-      it "lists shortened ids" do
-        expected_list = issues.map { |i| [ i, i.id[0...8] ] }.sort_by { |a| a[0] }
-        
+      it "adds a short_id method to issues" do
         taco.write! issues        
-        taco.list(:short_ids => true).should eq expected_list
+        taco.list.each { |issue| issue.should respond_to :short_id }
+        taco.list.each { |issue| issue.id.should include issue.short_id }        
       end
       
       it "uses slightly longer short_ids when there is id overlap" do
@@ -168,7 +167,9 @@ describe Taco do
         i1 = Issue.new FactoryGirl.attributes_for(:issue).merge({:id => 'abc123xyt'})        
         taco.write! [ i0, i1 ]
         
-        taco.list(:short_ids => true).sort.should eq [ [ i0, 'abc123xyz' ], [ i1, 'abc123xyt' ] ].sort
+        issues = taco.list
+        issues[0].short_id.should eq 'abc123xyt'
+        issues[1].short_id.should eq 'abc123xyz'        
       end
       
       it "raises Issue::Invalid on files that are in the issue path that aren't issues" do

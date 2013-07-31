@@ -86,17 +86,18 @@ class Taco
       
       raise Issue::Invalid.new("Issue ID does not match filename: #{issue.id} != #{id}") unless issue.id == id
       
-      short_id = 8.upto(id.size).each do |n|
-        short_id = id[0...n]
-        break short_id unless ids.count { |i| i.include? short_id } > 1
+      the_short_id = 8.upto(id.size).each do |n|
+        the_short_id = id[0...n]
+        break the_short_id unless ids.count { |i| i.include? the_short_id } > 1
       end
+
+      # because the length of the short_id is determinable only within the context of a group of issues 
+      # (because it must long enough to be unique), we can only define it on Issue in the context of a group
+      #
+      issue.instance_eval "def short_id; #{the_short_id.inspect}; end"
       
-      if opts[:short_ids]
-        [ issue, short_id ]
-      else
-        issue
-      end
-    end.reject(&:nil?).sort_by { |thing| opts[:short_ids] ? thing[0] : thing}
+      issue
+    end.reject(&:nil?).sort
   end
 end
 

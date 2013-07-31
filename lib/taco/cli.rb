@@ -36,14 +36,12 @@ class TacoCLI
   end
 
   def list(args, opts)
-    the_list = @taco.list(:short_ids => true, :filters => args)
+    the_list = @taco.list :filters => args
     
     if opts[:sort]
       attrs = opts[:sort].split(',').map(&:to_s)
       
-      the_list.sort! do |lhs, rhs|
-        issue_a, issue_b = lhs[0], rhs[0]
-
+      the_list.sort! do |issue_a, issue_b|
         order = 0
         
         attrs.take_while do |attr|
@@ -55,8 +53,8 @@ class TacoCLI
       end
     end
     
-    the_list.map! do |issue, short_id| 
-      "#{short_id} : #{issue.priority} : #{issue.summary}"
+    the_list.map! do |issue| 
+      "#{issue.short_id} : #{issue.priority} : #{issue.summary}"
     end
     
     return "Found no issues." unless the_list.size > 0
