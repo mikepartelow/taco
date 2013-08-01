@@ -14,6 +14,17 @@ FEATURES
 - specs combining list sorting and filtering
 - user-specifiable (via .tacorc and CL switches) sort order for "taco list"
 - user-specifiable (via .tacorc and CL switches) column list for "taco list"
+- user-specifiable via .tacorc default filter
+  - consider MERGING default filter with cmdline.  ex: .tacorc: user:mike, "taco list status:open" should show mike's open, NOT all open
+  - consider printing filter unless squelched
+  - per-user .tacorc. OR: .tacorc is the repo conf, taco_profile is the per-user
+    - taco_profile should be multi-repos:
+      work_bugs:
+      sort: user,priority
+      cols: created_at,id,priority
+      todo_list:
+      sort: priority,summary
+      cols: priority,summary,created_at
 
 - don't report validation problems one at a time, report all of them at once
 
