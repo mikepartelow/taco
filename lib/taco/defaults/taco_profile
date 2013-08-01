@@ -1,0 +1,14 @@
+# comment, followed by a blank line (don't panic)
+
+# uncomment/edit to change the default sort order for 'taco list'
+#
+# sort: priority,status,owner
+
+# uncomment/edit to change the default filter for 'taco list'
+#
+# filter: kind:open owner:mike
+
+# uncomment/edit to change the default columns for 'taco list'
+#
+
+#columns: short_id,priority,owner,status,summary

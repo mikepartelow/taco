@@ -59,8 +59,10 @@ EOT
       File.exists?(taco.home).should be_true
       
       out.should include TacoCLI::TACORC_NAME   
+      out.should include TacoCLI::TACO_PROFILE_NAME
       File.exists?(File.join(taco.home, TacoCLI::TACORC_NAME)).should be_true      
       File.exists?(File.join(taco.home, TacoCLI::INDEX_ERB_NAME)).should be_true      
+      File.exists?(File.join(taco.home, TacoCLI::TACO_PROFILE_NAME)).should be_true            
     end    
   end
   
@@ -658,6 +660,149 @@ EOT
       out.should include '<html>'
       out.should include '</html>'
       issues.each { |issue| out.should include issue.id }
+    end
+  end
+
+  describe "taco_profile" do
+    describe "sensible defaults" do
+      it "has them"
+    end
+    
+    describe "sorting" do
+      after { FileUtils.rm_rf(TMP_PATH) }
+      
+      it "sorts with the given sort order" do
+        # FIXME: stop copying and pasting this!!        
+        i1, i2, i3, i4, i5, i6 = [
+          FactoryGirl.build(:issue, :summary => 'summary2', :kind => 'kind2', :owner => 'owner3', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary1', :kind => 'kind3', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary3', :kind => 'kind1', :owner => 'owner1', :priority => 3),      
+
+          FactoryGirl.build(:issue, :summary => 'summary4', :kind => 'kind6', :owner => 'owner1', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary5', :kind => 'kind5', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary6', :kind => 'kind4', :owner => 'owner3', :priority => 3),      
+        ]
+      
+        FileUtils.rm_rf(taco.home)
+        taco.init!
+        taco.write! [ i1, i2, i3, i4, i5, i6 ]
+      
+        open(TACO_PROFILE_PATH, 'w') { |f| f.write("sort: priority,owner,kind") }        
+        r, out = ex 'list'
+        r.should eq 0
+        [ i4, i1, i2, i5, i3, i6 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end
+        
+        open(TACO_PROFILE_PATH, 'w') { |f| f.write("sort: kind,priority,owner") }                
+        r, out = ex 'list'
+        r.should eq 0
+        [ i3, i1, i2, i6, i5, i4 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end        
+
+        open(TACO_PROFILE_PATH, 'w') { |f| f.write("sort: priority,kind,owner") }                
+        r, out = ex 'list'
+        r.should eq 0
+        [ i1, i4, i2, i5, i3, i6 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end                
+      end
+      
+      it "ignores the taco_profile sort order if --sort is given" do
+        # FIXME: stop copying and pasting this!!
+        i1, i2, i3, i4, i5, i6 = [
+          FactoryGirl.build(:issue, :summary => 'summary2', :kind => 'kind2', :owner => 'owner3', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary1', :kind => 'kind3', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary3', :kind => 'kind1', :owner => 'owner1', :priority => 3),      
+
+          FactoryGirl.build(:issue, :summary => 'summary4', :kind => 'kind6', :owner => 'owner1', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary5', :kind => 'kind5', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary6', :kind => 'kind4', :owner => 'owner3', :priority => 3),      
+        ]
+      
+        FileUtils.rm_rf(taco.home)
+        taco.init!
+        taco.write! [ i1, i2, i3, i4, i5, i6 ]
+      
+        open(TACO_PROFILE_PATH, 'w') { |f| f.write("sort: priority,owner,kind") }
+        r, out = ex 'list --sort kind,priority,owner'
+        r.should eq 0
+        [ i3, i1, i2, i6, i5, i4 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end        
+      end
+    end
+
+    describe "filtering" do
+      after { FileUtils.rm_rf(TMP_PATH) }      
+      
+      it "filters with the given filters" do
+        # FIXME: stop copying and pasting this!!        
+        i1, i2, i3, i4, i5, i6 = [
+          FactoryGirl.build(:issue, :summary => 'summary2', :kind => 'kind2', :owner => 'owner3', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary1', :kind => 'kind3', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary3', :kind => 'kind1', :owner => 'owner1', :priority => 3),      
+
+          FactoryGirl.build(:issue, :summary => 'summary4', :kind => 'kind6', :owner => 'owner1', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary5', :kind => 'kind5', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary6', :kind => 'kind4', :owner => 'owner3', :priority => 3),      
+        ]
+      
+        FileUtils.rm_rf(taco.home)
+        taco.init!
+        taco.write! [ i1, i2, i3, i4, i5, i6 ]   
+        
+        open(TACO_PROFILE_PATH, 'w') { |f| f.write("filters: owner:owner1\nsort:summary") }
+        r, out = ex 'list'
+        r.should eq 0
+        [ i3, i4 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end             
+      end
+      
+      it "ignores the taco_profile filters if filters are given on the command line" do
+        # FIXME: stop copying and pasting this!!        
+        i1, i2, i3, i4, i5, i6 = [
+          FactoryGirl.build(:issue, :summary => 'summary2', :kind => 'kind2', :owner => 'owner3', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary1', :kind => 'kind3', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary3', :kind => 'kind1', :owner => 'owner1', :priority => 3),      
+
+          FactoryGirl.build(:issue, :summary => 'summary4', :kind => 'kind6', :owner => 'owner1', :priority => 1),
+          FactoryGirl.build(:issue, :summary => 'summary5', :kind => 'kind5', :owner => 'owner2', :priority => 2),
+          FactoryGirl.build(:issue, :summary => 'summary6', :kind => 'kind4', :owner => 'owner3', :priority => 3),      
+        ]
+      
+        FileUtils.rm_rf(taco.home)
+        taco.init!
+        taco.write! [ i1, i2, i3, i4, i5, i6 ]   
+        
+        open(TACO_PROFILE_PATH, 'w') { |f| f.write("filters: owner:owner1\nsort:summary") }
+        r, out = ex 'list owner:owner3'
+        r.should eq 0
+        [ i1, i6 ].zip(out.lines).each do |issue, line|
+          line.should include issue.summary
+        end             
+      end
+    end
+
+    describe "column list" do
+      after { FileUtils.rm_rf(TMP_PATH) }      
+   
+      it "displays the given columns" do
+        taco.init!
+        taco.write! issues[0]
+        
+        open(TACO_PROFILE_PATH, 'w') { |f| f.write("columns: short_id") }
+        r, out = ex 'list'
+        r.should eq 0
+        out.should eq issues[0].id[0..7]
+        
+        open(TACO_PROFILE_PATH, 'w') { |f| f.write("columns: short_id,priority,summary") }
+        r, out = ex 'list'
+        r.should eq 0
+        out.should eq "#{issues[0].id[0..7]} : #{issues[0].priority} : #{issues[0].summary}"
+      end
     end
   end
 

@@ -1,7 +1,6 @@
 require 'taco/tacorc'
 require 'taco/schema'
 
-
 describe TacoRc do
   let(:tacorc) { <<-EOT.strip
 # comment, followed by a blank line (don't panic)

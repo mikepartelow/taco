@@ -1,3 +1,6 @@
+# .taco/.tacorc describes properties of the taco repository
+# contrast with ~/.taco_profile
+
 class TacoRc
   class ParseError < Exception; end
   

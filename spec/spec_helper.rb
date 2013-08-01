@@ -19,5 +19,6 @@ TACO_PATH = File.realdirpath "./bin/taco"
 TMP_PATH = File.realdirpath "./spec/tmp"
 TACO_HOME_PATH = File.join(TMP_PATH, '.taco')
 TACORC_PATH = File.join(TACO_HOME_PATH, '.tacorc')
+TACO_PROFILE_PATH = File.join(TACO_HOME_PATH, '.taco_profile')
 EDITOR_PATH = File.realdirpath "./spec/editor.rb"
 EDITOR_WRITE_PATH = File.join(TMP_PATH, 'editor_output.txt')

@@ -1,60 +1,83 @@
 require 'taco/issue'
 require 'taco/taco'
 require 'taco/tacorc'
+require 'taco/taco_profile'
+
+# FIXME: this file should be named taco_cli.rb
 
 class TacoCLI
   RETRY_NAME = '.taco_retry.txt'
 
   TACORC_NAME = '.tacorc'
+  TACO_PROFILE_NAME = '.taco_profile'
   INDEX_ERB_NAME = '.index.html.erb'
   
   DEFAULT_TACORC_NAME = 'tacorc'
+  DEFAULT_TACO_PROFILE_NAME = 'taco_profile'
   DEFAULT_INDEX_ERB_NAME = 'index.html.erb'
-  DEFAULTS_HOME = File.realpath(File.join(File.dirname(__FILE__), 'defaults/'))
   
+  DEFAULTS_HOME = File.realpath(File.join(File.dirname(__FILE__), 'defaults/'))
+    
   def initialize
     @taco = Taco.new
     
     @retry_path = File.join(@taco.home, RETRY_NAME)
 
     @tacorc_path = File.join(@taco.home, TACORC_NAME)
+    @taco_profile_path = File.join(@taco.home, TACO_PROFILE_NAME)
     @index_erb_path = File.join(@taco.home, INDEX_ERB_NAME)
-    
+
+    # FIXME: do this elsewhere.  pass in an initialized TacoRc object
+    #
     if File.exist? @tacorc_path
       rc = TacoRc.new @tacorc_path
       rc.update_schema! Issue
     end
+    
+    # FIXME: do this elsewhere.  pass in an initialized TacoProfile object
+    #
+    if File.exist? @taco_profile_path
+      profile_text = open(@taco_profile_path) { |f| f.read }
+    end
+    
+    @profile = TacoProfile.new profile_text    
   end
   
   def init!
     out = @taco.init!
 
     FileUtils.copy(File.join(DEFAULTS_HOME, DEFAULT_TACORC_NAME), @tacorc_path)    
+    FileUtils.copy(File.join(DEFAULTS_HOME, DEFAULT_TACO_PROFILE_NAME), @taco_profile_path)    
+
     FileUtils.copy(File.join(DEFAULTS_HOME, DEFAULT_INDEX_ERB_NAME), @index_erb_path)
     
-    out + "\nPlease edit the config file at #{@tacorc_path}"
+    out + "\nPlease edit the config files at:\n #{@tacorc_path}\n #{@taco_profile_path}"
   end
 
   def list(args, opts)
-    the_list = @taco.list :filters => args
+    filters = args.size > 0 ? args : @profile.filters
+
+    the_list = @taco.list :filters => filters
     
     if opts[:sort]
       attrs = opts[:sort].split(',').map(&:to_s)
+    else
+      attrs = @profile.sort_order
+    end
       
-      the_list.sort! do |issue_a, issue_b|
-        order = 0
-        
-        attrs.take_while do |attr|
-          order = issue_a.send(attr) <=> issue_b.send(attr)
-          order == 0
-        end
-                
-        order
+    the_list.sort! do |issue_a, issue_b|
+      order = 0
+      
+      attrs.take_while do |attr|
+        order = issue_a.send(attr) <=> issue_b.send(attr)
+        order == 0
       end
+              
+      order
     end
     
-    the_list.map! do |issue| 
-      "#{issue.short_id} : #{issue.priority} : #{issue.summary}"
+    the_list.map! do |issue|
+      @profile.columns.map { |col| issue.send(col) }.join(' : ')
     end
     
     return "Found no issues." unless the_list.size > 0
