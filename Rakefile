@@ -7,29 +7,35 @@ RSpec::Core::RakeTask.new(:spec) do |t|
 end
 
 task :release, [:version] do |t, args|
-  GEMSPEC_PATH = 'taco.gemspec'
-  TACO_RB_PATH = 'bin/taco'
+  if args[:version].nil?
+    out = `gem list -r taco_it -a`
+    latest = out.split(',')[0].split('(')[1]
+    puts "Latest version on rubygems.org: #{latest}"
+  else
+    GEMSPEC_PATH = 'taco.gemspec'
+    TACO_RB_PATH = 'bin/taco'
   
-  new_version = args[:version]
+    new_version = args[:version]
   
-  abort "Error: expecting X.Y.Z for version" unless new_version =~ /^\d+\.\d+\.\d+$/
+    abort "Error: expecting X.Y.Z for version" unless new_version =~ /^\d+\.\d+\.\d+$/
 
-  puts "Modifying #{TACO_RB_PATH}"
-  old_taco_rb = open(TACO_RB_PATH) { |f| f.read }
-  new_taco_rb = old_taco_rb.gsub /program :version, '\d+\.\d+\.\d+'/, "program :version, '#{new_version}'"
-  open(TACO_RB_PATH, 'w') { |f| f.write(new_taco_rb) }
+    puts "Modifying #{TACO_RB_PATH}"
+    old_taco_rb = open(TACO_RB_PATH) { |f| f.read }
+    new_taco_rb = old_taco_rb.gsub /program :version, '\d+\.\d+\.\d+'/, "program :version, '#{new_version}'"
+    open(TACO_RB_PATH, 'w') { |f| f.write(new_taco_rb) }
   
-  puts "Building gem for version: #{new_version}"
-  gemspec = open(GEMSPEC_PATH) { |f| f.read }
+    puts "Building gem for version: #{new_version}"
+    gemspec = open(GEMSPEC_PATH) { |f| f.read }
   
-  gemspec =~ /s\.version\s+=\s+'(\d+\.\d+\.\d+)'/
-  old_version = $1
+    gemspec =~ /s\.version\s+=\s+'(\d+\.\d+\.\d+)'/
+    old_version = $1
   
-  puts "Old gem version: #{old_version}"
-  gemspec.gsub! /(s\.version\s+=\s+)'(\d+\.\d+\.\d+)'/, "\\1'#{new_version}'"
+    puts "Old gem version: #{old_version}"
+    gemspec.gsub! /(s\.version\s+=\s+)'(\d+\.\d+\.\d+)'/, "\\1'#{new_version}'"
   
-  open(GEMSPEC_PATH, 'w') { |f| f.write(gemspec) }
+    open(GEMSPEC_PATH, 'w') { |f| f.write(gemspec) }
   
-  sh "gem build #{GEMSPEC_PATH}"
+    sh "gem build #{GEMSPEC_PATH}"
+  end
 end
 

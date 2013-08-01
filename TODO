@@ -11,6 +11,7 @@ BUGS
                         
 FEATURES
 ---
+-  sort in either direction with - (-short_id vs short_id)
 - specs combining list sorting and filtering
 - user-specifiable (via .tacorc and CL switches) sort order for "taco list"
 - user-specifiable (via .tacorc and CL switches) column list for "taco list"
