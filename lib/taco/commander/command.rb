@@ -40,6 +40,7 @@ module Commander
     def initialize name
       @name, @examples, @when_called = name.to_s, [], []
       @options, @proxy_options = [], []
+      @argument_validator = nil
     end
     
     ##
@@ -57,6 +58,11 @@ module Commander
     
     def example description, command 
       @examples << [description, command]
+    end
+    
+    
+    def arguments proc
+      @argument_validator = proc
     end
     
     ##
@@ -176,6 +182,13 @@ module Commander
       object = @when_called.shift
       meth = @when_called.shift || :call
       options = proxy_option_struct
+      
+      if @argument_validator
+        raise ArgumentError.new("Unexpected arguments: #{args.join(' ')}") unless @argument_validator.call(args)
+      elsif args.size > 0
+        raise ArgumentError.new("Unexpected arguments: #{args.join(' ')}")
+      end
+      
       case object
       when Proc  ; object.call(args, options)
       when Class ; meth != :call ? object.new.send(meth, args, options) : object.new(args, options)

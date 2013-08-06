@@ -20,8 +20,6 @@ command :init do |c|
   c.summary = 'initialize a taco repo in the current directory'
   c.description = 'Initialize a taco Issue repository in the current working directory'
   c.action do |args, options|
-    # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-    raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
     puts cli.init!
   end
 end
@@ -35,11 +33,9 @@ command :list do |c|
   
   c.example 'Sort Issues by Priority, Owner, and Kind', 'taco list --sort priority,owner,kind'
   
+  c.arguments lambda { |args| args.all? { |arg| arg =~ /\w+:\w+/ } }
+  
   c.action do |args, options|
-    # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-    unless args.all? { |arg| arg =~ /\w+:\w+/ }
-      raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}")
-    end
     puts cli.list args, :sort => options.sort
   end
 end
@@ -53,10 +49,9 @@ command :new do |c|
   
   c.option '--retry', nil, 'retry a failed Issue creation'
   
+  c.arguments lambda { |args| args.size <= 1 }
+  
   c.action do |args, options|
-    # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-    raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") if args.size > 1
-    
     begin
       puts cli.new! args, { :retry => options.retry }
     rescue Issue::Invalid => e
@@ -79,6 +74,8 @@ command :show do |c|
   c.option '--changelog', nil, 'shows the changelog'
   c.option '--all', nil, 'show all Issues'
   
+  c.arguments lambda { |args| true } # argument validation (matching arguments to issues) will be done inside cli.show
+  
   c.action do |args, options|
     puts cli.show args, { :changelog => options.changelog, :all => options.all }
   end  
@@ -91,11 +88,9 @@ command :edit do |c|
   
   c.option '--retry', nil, 'retry a failed Issue edit'
   
+  c.arguments lambda { |args| args.size == 1 }
+  
   c.action do |args, options|
-    # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-    # also, this makes no sense when you pass in 0 args!
-    raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 1
-    
     begin
       puts cli.edit! args, { :retry => options.retry }
     rescue Issue::Invalid => e
@@ -112,9 +107,6 @@ command :template do |c|
   c.option '--defaults', nil, 'Print the Issue template with default values'
   
   c.action do |args, options|
-    # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-    raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
-    
     puts cli.template({ :defaults => options.defaults })
   end  
 end
@@ -125,9 +117,6 @@ command :html do |c|
   c.description = 'Generate an HTML buglist from index.html.erb'
   
   c.action do |args, options|
-    # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-    raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
-  
     puts cli.html
   end  
 end
@@ -140,9 +129,6 @@ command :push do |c|
   c.option '--message STRING', String, 'Override the default commit message.'
   
   c.action do |args, options|
-    # FIXME: merge this kind of thing into commander: tell it how many arguments we expect.
-    raise ArgumentError.new("Unexpected arguments: #{args.join(', ')}") unless args.size == 0
-    
     puts cli.push({ :message => options.message })
   end  
 end
