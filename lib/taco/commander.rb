@@ -24,7 +24,6 @@
 require 'highline/import'
 require 'taco/commander/version'
 require 'taco/commander/blank'
-require 'taco/commander/user_interaction'
 require 'taco/commander/core_ext'
 require 'taco/commander/runner'
 require 'taco/commander/command'

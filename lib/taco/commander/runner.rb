@@ -65,14 +65,9 @@ module Commander
         begin
           run_active_command
         rescue InvalidCommandError => e
-          abort "#{e}. Use --help for more information"
-        rescue \
-          OptionParser::InvalidOption, 
-          OptionParser::InvalidArgument,
-          OptionParser::MissingArgument => e
-          abort e.to_s
-        rescue => e
-          abort "error: #{e}. Use --trace to view backtrace"
+          abort "Error: Invalid command. See 'taco --help' for more information."
+        rescue Exception => e
+          abort "Error: #{e.to_s}"
         end
       else
         run_active_command
@@ -270,7 +265,6 @@ module Commander
         c.example 'Display global help', 'command help'
         c.example "Display help for 'foo'", 'command help foo'
         c.when_called do |args, options|
-          enable_paging
           if args.empty?
             say help_formatter.render 
           else
