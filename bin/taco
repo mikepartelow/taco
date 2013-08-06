@@ -9,7 +9,7 @@ rescue TacoRc::ParseError => e
   exit 1
 end
 
-require 'commander/import'
+require 'taco/commander/import'
 
 program :name, 'taco'
 program :version, '1.5.0'
