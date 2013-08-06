@@ -1,3 +1,7 @@
+COMMANDER
+---
+- argument counting
+
 BUGS
 ---
 - taco push prints out "true"
@@ -54,6 +58,3 @@ TODO:
 - should taco config and issues go into different directories?
 
 - fully interactive mode (shell)
-
-- don't bypass commander's exception handler, fix it and use it.
-  - fix problems with commander and send patch to owner (clone to taco until gem suffices)

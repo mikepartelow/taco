@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'commander'
+gem 'highline'
 
 group :test do
   gem 'rspec'

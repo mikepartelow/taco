@@ -6,14 +6,14 @@ def date(t)
   t.strftime "%Y/%m/%d %H:%M:%S"
 end
 
-def ex(args, opts={:env => {}, :stderr => false})
+def ex(args, opts={:env => {}, :stderr => true})
   opts[:env] ||= {}
-  opts[:stderr] ||= false
+  opts[:stderr] = opts[:stderr].nil? ? true : opts[:stderr]
   
   r, w = IO.pipe
 
   cmd = "cd #{TMP_PATH} && ruby -I#{LIB_PATH} #{TACO_PATH} #{args}"
-  cmd += " 2>&1" if opts[:stderr]
+  cmd += " 2>&1" unless opts[:stderr] == false
 
   # FIXME: this code can't handle hundreds of lines out output. in that case, it hangs.
   #        see NOTE 123456
@@ -68,7 +68,7 @@ EOT
   
   describe "help" do
     it "shows help when no arguments are given" do
-      r, out = ex '', :stderr => true
+      r, out = ex ''
       r.should_not eq 0
       out.should include '--help'
     end
