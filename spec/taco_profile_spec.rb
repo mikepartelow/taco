@@ -1,4 +1,5 @@
 require 'taco/taco_profile'
+require 'taco/issue'
 
 describe TacoProfile do
   let(:taco_profile_text) { <<-EOT.strip
@@ -27,9 +28,37 @@ EOT
       TacoProfile.new("  \n#")
     end
     
-    it "raises on unknown sort attribute"
-    it "raises on unknown filter attribute"
-    it "raises on unknown column attribute"
+    it "raises on duplicate lines" do
+      expect {
+        TacoProfile.new("sort: priority,status\nsort: status,priority")
+      }.to raise_error(ArgumentError)      
+            
+      expect {
+        TacoProfile.new("filters: priority:1 status:open\nfilters: status:open priority:1")
+      }.to raise_error(ArgumentError)      
+      
+      expect {
+        TacoProfile.new("columns: priority,status\columns: status,priority")
+      }.to raise_error(ArgumentError)            
+    end
+    
+    it "raises on unknown sort attribute" do
+      expect {
+        TacoProfile.new('sort: priority,hamburger,status')
+      }.to raise_error(ArgumentError)
+    end
+    
+    it "raises on unknown filter attribute" do
+      expect {
+        TacoProfile.new('filters: kind:open hamburger:hamburger')
+      }.to raise_error(ArgumentError)
+    end
+    
+    it "raises on unknown column attribute" do
+      expect {
+        TacoProfile.new('columns: short_id,hamburger,owner')
+      }.to raise_error(ArgumentError)
+    end
   end  
   
   describe "defaults" do

@@ -60,7 +60,11 @@ class TacoCLI
     the_list = @taco.list :filters => filters
     
     if opts[:sort]
-      attrs = opts[:sort].split(',').map(&:to_s)
+      attrs = opts[:sort].split(',').map(&:to_sym)
+      attrs.each do |attr|
+        # FIXME: don't hardcode :short_id
+        raise ArgumentError.new("Unknown Issue attribute for sort: #{attr}") unless attr == :short_id || Issue.schema_attributes.include?(attr)
+      end
     else
       attrs = @profile.sort_order
     end

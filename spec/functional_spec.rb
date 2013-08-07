@@ -130,7 +130,13 @@ EOT
         end        
       end
       
-      it "gives a nice error message for unknown attributes"
+      it "gives a nice error message for unknown attributes" do
+        r, out = ex 'list --sort priority,hamburger,owner'
+        r.should_not eq 0        
+        out.should include "Error"
+        out.should include "hamburger"        
+      end
+      
       
       it "sorts asc or desc as given"
     end

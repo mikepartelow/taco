@@ -1,9 +1,6 @@
-COMMANDER
----
-- argument counting
-
 BUGS
 ---
+- don't hardcode :short_id.  put it into schema_attributes somehow.
 - taco push prints out "true"
 - why do the specs print out "invalid command"? is it because i removed the __FILE__==$0?
 - git tag as part of "rake release"
