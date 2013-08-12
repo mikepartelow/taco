@@ -12,6 +12,7 @@ BUGS
                         
 FEATURES
 ---
+- edit multiple issues: taco edit 123abc 456xyz
 -  sort in either direction with - (-short_id vs short_id)
 - specs combining list sorting and filtering
 - user-specifiable (via .tacorc and CL switches) sort order for "taco list"
