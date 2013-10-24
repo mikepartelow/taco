@@ -67,6 +67,7 @@ class Taco
     filter_match = if opts.fetch(:filters, []).size > 0
       conditions = opts[:filters].map do |filter|
         attr, val = filter.split(':')
+        attr = Issue.schema_attr_expand(attr)
         %Q|i.send("#{attr}").to_s.downcase == "#{val.downcase}"|
       end.join ' && '
       

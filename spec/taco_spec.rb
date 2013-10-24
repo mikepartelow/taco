@@ -215,6 +215,23 @@ describe Taco do
           taco.write! issue
           taco.list(:filters => [ 'priority:99' ]).should eq [ issue ]
         end
+        
+        it "filters with attribute prefixes" do
+          issue = FactoryGirl.build(:issue, :summary => 'summary99', :priority => 99)
+          taco.write! issue
+          taco.list(:filters => [ 'p:99' ]).should eq [ issue ]          
+          taco.list(:filters => [ 'pr:99' ]).should eq [ issue ]          
+          taco.list(:filters => [ 'pri:99' ]).should eq [ issue ]          
+          taco.list(:filters => [ 'prio:99' ]).should eq [ issue ]          
+          
+          taco.list(:filters => [ 'sum:summary99' ]).should eq [ issue ]                    
+
+          taco.list(:filters => [ 'sum:summary99', 'p:99' ]).should eq [ issue ]                    
+
+          taco.list(:filters => [ 'sum:summary99', 'p:1' ]).should eq []                    
+
+          expect { taco.list(:filters => [ 's:summary99' ]) }.to raise_error(KeyError)
+        end
       end      
     end
   end

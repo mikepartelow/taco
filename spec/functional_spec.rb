@@ -207,6 +207,25 @@ EOT
       kind2_issues.each { |issue| out.should include issue.id }      
     end
     
+    it "filters by attribute prefix" do
+      kind2_issues = [ FactoryGirl.build(:issue, :kind => 'kind2'), FactoryGirl.build(:issue, :kind => 'kind2' ) ]
+      taco.write! kind2_issues
+      
+      r, out = ex 'show --all k:kind2'
+      r.should eq 0
+      issues.each { |issue| out.should_not include issue.id }
+      kind2_issues.each { |issue| out.should include issue.id }      
+    end
+    
+    it "displays an error message when the filter prefix is unknown or not unique" do
+      kind2_issues = [ FactoryGirl.build(:issue, :kind => 'kind2'), FactoryGirl.build(:issue, :kind => 'kind2' ) ]
+      taco.write! kind2_issues
+      
+      r, out = ex 'show --all xxxxx:kind2'
+      r.should_not eq 0
+      out.should include 'no attribute is prefixed with xxxxx'
+    end
+    
     it "does not allow filters without -all"    
     it "does not allow mixing of --all with issue ids"
     it "does not allow mixing of issue ids with filters"

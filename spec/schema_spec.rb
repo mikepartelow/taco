@@ -53,6 +53,27 @@ describe Schema do
     it "has a schema_attributes class method" do
       Foo.schema_attributes.keys.sort.should eq [ :bar, :baz, :ick, :thud, :wank, :crud, :frob, :scro, :nart, :wozt, :wizt, :wuzt ].sort
     end
+    
+    describe "schema_attr_expand" do
+      it "expands attributes" do
+        Foo.schema_attr_expand('i').should eq :ick
+        Foo.schema_attr_expand('ic').should eq :ick
+        
+        Foo.schema_attr_expand('c').should eq :crud
+        Foo.schema_attr_expand('cr').should eq :crud
+        Foo.schema_attr_expand('cru').should eq :crud
+      end
+      
+      it "raises KeyError on ambiguous expansion" do
+        expect { Foo.schema_attr_expand('b') }.to raise_error(KeyError)
+        expect { Foo.schema_attr_expand('ba') }.to raise_error(KeyError)
+        expect { Foo.schema_attr_expand('w') }.to raise_error(KeyError)
+      end
+      
+      it "raises KeyError on unknown attribute" do
+        expect { Foo.schema_attr_expand('doesnotexist') }.to raise_error(KeyError)
+      end
+    end
         
     it "creates getters with default value" do
       Foo.new.bar.should eq 'abc123'

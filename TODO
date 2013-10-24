@@ -12,6 +12,7 @@ BUGS
                         
 FEATURES
 ---
+- sort by prefix (stat,prio,own)
 - edit multiple issues: taco edit 123abc 456xyz
 -  sort in either direction with - (-short_id vs short_id)
 - specs combining list sorting and filtering

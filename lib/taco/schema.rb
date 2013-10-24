@@ -56,6 +56,13 @@ module Schema
       @schema_attrs
     end
     
+    def schema_attr_expand(prefix)
+      candidates = @schema_attrs.keys.select { |a| a.to_s.start_with? prefix }
+      raise KeyError.new("no attribute is prefixed with #{prefix}") if candidates.size == 0
+      raise KeyError.new("prefix #{prefix} is not unique") if candidates.size > 1
+      candidates[0]      
+    end
+    
     def schema_attr_remove(name)
       raise KeyError.new("attribute #{name}: does not exist in class #{self.name}") unless @schema_attrs.include? name      
       @schema_attrs.delete(name)
