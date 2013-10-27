@@ -1,0 +1,16 @@
+{
+	"folders":
+	[
+		{
+			"file_exclude_patterns":
+			[
+
+				"Gemfile.lock",
+				".rspec",
+				".rvmrc"
+			],
+			"follow_symlinks": true,
+			"path": "/Users/osiris/code/github/taco/"
+		}
+	]
+}
