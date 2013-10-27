@@ -92,10 +92,27 @@ class TacoCLI
     editor_opts = if opts[:retry]
       raise ArgumentError.new("No previous Issue edit session was found.") unless File.exist?(@retry_path)
       { :template => open(@retry_path) { |f| f.read } }
-    elsif args.size == 0
-      { :template => Issue.new.to_template }
-    elsif args.size == 1
-      { :from_file => args[0] }
+    else
+      file, defaults = nil, {}
+
+      args.each do |arg|
+        if arg.include? ':'
+          k, v = arg.split(':', 2)
+          defaults[k.to_sym] = v
+        elsif file
+          raise ArgumentError.new("Multiple filenames given.")
+        else
+          file = arg
+        end
+      end
+
+      if file && defaults.size > 0
+        raise ArgumentError.new("Cannot set defaults when creating Issue from file.")
+      elsif file
+        { :from_file => file, :defaults => defaults }
+      else
+        { :template => Issue.new.to_template(:defaults => defaults) }
+      end
     end
 
     if issue = IssueEditor.new(@taco, @retry_path).new_issue!(editor_opts)

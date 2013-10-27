@@ -144,10 +144,10 @@ EOT
     JSON.pretty_generate(hash)
   end
 
-  def to_template
+  def to_template(opts={})
     if new?
       header = "# New Issue\n#"
-      body = TEMPLATE % self.to_hash
+      body = TEMPLATE % self.to_hash.merge(opts.fetch(:defaults, {}))
       footer = ""
     else
       header =<<-EOT

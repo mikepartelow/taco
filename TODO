@@ -12,9 +12,10 @@ BUGS
                         
 FEATURES
 ---
+- example usage in README
 - sort by prefix (stat,prio,own)
 - edit multiple issues: taco edit 123abc 456xyz
--  sort in either direction with - (-short_id vs short_id)
+- sort in either direction with - (-short_id vs short_id)
 - specs combining list sorting and filtering
 - user-specifiable (via .tacorc and CL switches) sort order for "taco list"
 - user-specifiable (via .tacorc and CL switches) column list for "taco list"
@@ -52,7 +53,6 @@ FEATURES
 
 TODO:
 - store schema version in each issue
-- arguments to 'new': taco new component:foo kind:bar summary:'ick thud wank'
 - simplified editing: taco edit 123abc summary:'change only this one field'
 - should taco config and issues go into different directories?
 

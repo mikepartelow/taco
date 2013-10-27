@@ -49,7 +49,7 @@ command :new do |c|
   
   c.option '--retry', nil, 'retry a failed Issue creation'
   
-  c.arguments lambda { |args| args.size <= 1 }
+  c.arguments lambda { |args| true } #lambda { |args| args.size <= 1 }
   
   c.action do |args, options|
     begin

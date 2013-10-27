@@ -431,6 +431,26 @@ EOT
 
       Issue.new.to_template.should eq new_issue_template
     end
+
+    it "should render a 'new issue' template with defaults" do
+      new_issue_template = <<-EOT.strip
+# New Issue
+#
+# Lines beginning with # will be ignored.
+Summary     : 
+Kind        : XYZ
+Status      : 
+Priority    : 0
+Owner       : 
+
+# Everything between the --- lines is Issue Description
+---
+
+---
+EOT
+
+      Issue.new.to_template(:defaults => { :kind => 'XYZ' }).should eq new_issue_template      
+    end
     
     it "should render an 'edit issue' template when the issue is not new" do
       edit_issue_template = <<-EOT.strip
