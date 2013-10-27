@@ -98,7 +98,7 @@ class TacoCLI
       args.each do |arg|
         if arg.include? ':'
           k, v = arg.split(':', 2)
-          defaults[k.to_sym] = v
+          defaults[Issue.schema_attr_expand(k)] = v
         elsif file
           raise ArgumentError.new("Multiple filenames given.")
         else

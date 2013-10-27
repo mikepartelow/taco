@@ -356,6 +356,18 @@ EOT
           issue.to_s.should_not include '%{kind}'
           issue.to_s.should include 'KindNumber1'          
         end
+
+        it "sets defaults from abbreviated command line arguments" do
+          r, out = ex 'new k:KindNumber1', :env => { 'EDITOR' => EDITOR_PATH }
+          r.should eq 0
+          out.should include "Created Issue "
+
+          issue_id = out.split("Created Issue ")[1]
+
+          issue = taco.read(issue_id)
+          issue.to_s.should_not include '%{kind}'
+          issue.to_s.should include 'KindNumber1'          
+        end
       end
 
       describe "validation" do
