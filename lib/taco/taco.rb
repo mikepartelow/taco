@@ -66,6 +66,14 @@ class Taco
 
   def list(opts={})
     if opts.fetch(:filters, []).size > 0
+      # FIXME: find a *fast* way to tell if the index is stale.  a slow way: the index is older than the youngest issue
+      #
+      # FIXME: update the index when writing an issue
+      #
+      # FIXME: faster index update
+      #
+      # FIXME: Index class
+      #
       the_index = JSON.parse(open(@index_path) { |f| f.read })
 
       groups = opts[:filters].map do |filter|
