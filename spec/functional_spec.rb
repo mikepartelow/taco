@@ -92,7 +92,7 @@ EOT
 
       r, out = ex 'list'
       r.should eq 0
-      out.should =~ /Found no issues./
+      out.should include 'Found no Issues.'
     end
 
     describe "sorting" do
@@ -669,6 +669,12 @@ EOT
 
     before { taco.init! ; taco.write! issues }
     after { FileUtils.rm_rf(TMP_PATH) }
+
+    it "filters everying" do
+      r, out = ex 'list kind:NOT_A_VALID_KIND'
+      r.should eq 0
+      out.should include 'Found no Issues.'
+    end
 
     it "filters by attribute" do
       r, out = ex 'list kind:kind2'

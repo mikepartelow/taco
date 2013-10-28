@@ -84,7 +84,7 @@ class TacoCLI
       @profile.columns.map { |col| issue.send(col) }.join(' : ')
     end
 
-    return "Found no issues." unless the_list.size > 0
+    return "Found no Issues." unless the_list.size > 0
     the_list.join("\n")
   end
 

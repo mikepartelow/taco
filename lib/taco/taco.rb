@@ -36,6 +36,8 @@ class Taco
       open(File.join(@home, issue.id), 'w') { |f| f.write(the_json) }
     end
 
+    # FIXME: this is a pretty slow thing to do.
+    #
     index!
 
     issue_or_issues
@@ -74,9 +76,6 @@ class Taco
       # FIXME: find a *fast* way to tell if the index is stale.  a slow way: the index is older than the youngest issue
       #         this is extremely important since we can "git pull" and end up with new issues, and thus a stale index
       #
-      # FIXME: update the index when writing an issue
-      #
-      # FIXME: faster index update
       #
       # FIXME: Index class
       #
@@ -91,10 +90,10 @@ class Taco
       groups = opts[:filters].map do |filter|
         attr, val = filter.split(':', 2)
         attr = Issue.schema_attr_expand(attr)
-        the_index[attr.to_s][val]
+        the_index[attr.to_s][val.downcase] || []
       end
 
-      ids = groups.inject { |common, group| common & group }
+      ids = groups.inject { |common, group| common & group } || []
     else
       ids = if Dir.exists? @home
         Dir.entries(@home).reject { |e| e.start_with? '.' }
