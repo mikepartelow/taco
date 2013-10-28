@@ -15,12 +15,15 @@ class Taco
   def initialize(root_path=nil)
     @home = File.join(root_path || Dir.getwd, HOME_DIR)
     @index_path = File.join(@home, '.index')
+    @cache_path = File.join(@home, '.cache')
   end
 
   def init!
     raise IOError.new("Could not create #{@home}\nDirectory already exists.") if File.exists?(@home)
 
     FileUtils.mkdir_p(@home)
+
+    index!
 
     "Initialized #{@home}"
   end
@@ -32,6 +35,8 @@ class Taco
       the_json = issue.to_json # do this first so we don't bother the filesystem if the issue is invalid
       open(File.join(@home, issue.id), 'w') { |f| f.write(the_json) }
     end
+
+    index!
 
     issue_or_issues
   end
@@ -67,12 +72,19 @@ class Taco
   def list(opts={})
     if opts.fetch(:filters, []).size > 0
       # FIXME: find a *fast* way to tell if the index is stale.  a slow way: the index is older than the youngest issue
+      #         this is extremely important since we can "git pull" and end up with new issues, and thus a stale index
       #
       # FIXME: update the index when writing an issue
       #
       # FIXME: faster index update
       #
       # FIXME: Index class
+      #
+      # FIXME: make sure @index_path isn't committed, it should be kept local
+      #      
+
+      # NOTE: it seems that splitting the_index and the_cache into separate files is actually slower than
+      #       using one big file.
       #
       the_index = JSON.parse(open(@index_path) { |f| f.read })
 
@@ -82,17 +94,32 @@ class Taco
         the_index[attr.to_s][val]
       end
 
-      ids = groups.inject { |common, group| common & group }.map { |id| File.join(@home, id) }
+      ids = groups.inject { |common, group| common & group }
     else
-      ids = Dir.glob("#{@home}/*")
+      ids = if Dir.exists? @home
+        Dir.entries(@home).reject { |e| e.start_with? '.' }
+      else
+        []
+      end
     end
 
-    ids.map do |name|
-      id = File.basename name
-      issue = Issue.from_json(open(name) { |f| f.read })
+    if opts[:thin_issue] && File.exists?(@cache_path)
+      the_cache = JSON.parse(open(@cache_path) { |f| f.read })
+    else
+      the_cache = {}
+    end
+
+    ids.map do |id|
+      issue = if opts[:thin_issue]
+        Issue.new the_cache[id]
+      else
+        Issue.from_json(open(File.join(@home, id)) { |f| f.read })
+      end
 
       raise Issue::Invalid.new("Issue ID does not match filename: #{issue.id} != #{id}") unless issue.id == id
 
+      # FIXME: this could be done when we generate the_cache 
+      #
       the_short_id = 8.upto(id.size).each do |n|
         the_short_id = id[0...n]
         break the_short_id unless ids.count { |i| i.include? the_short_id } > 1
@@ -108,27 +135,24 @@ class Taco
   end
 
   def index!
-    attrmap = {}
+    the_index = {}
+    the_cache = {}
 
-    list.each do |issue|
-      # FIXME: since we're stripping these attributes, we should explicitly disallow filtering/searching on them.
-      #
-      fields_to_ignore = [ :id, :created_at, :updated_at, :description, ]
-      the_hash = issue.to_hash.delete_if { |k,v| fields_to_ignore.include? k }
+    list.each do |issue|      
+      the_hash = issue.to_hash
 
       the_hash.each do |k, v|
         k, v = k.downcase, v.to_s.downcase
-        attrmap[k] ||= {}
-        attrmap[k][v] ||= []
-        attrmap[k][v] << issue.id
+        the_index[k] ||= {}
+        the_index[k][v] ||= []
+        the_index[k][v] << issue.id
       end
 
-      the_hash
+      the_cache[issue.id] = the_hash
     end
 
-    the_json = attrmap.to_json
-
-    open(@index_path, 'w') { |f| f.write(the_json) }
+    open(@index_path, 'w') { |f| f.write(the_index.to_json) }
+    open(@cache_path, 'w') { |f| f.write(the_cache.to_json) }
   end
 end
 

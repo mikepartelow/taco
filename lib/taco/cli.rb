@@ -57,7 +57,7 @@ class TacoCLI
   def list(args, opts)
     filters = args.size > 0 ? args : @profile.filters
 
-    the_list = @taco.list :filters => filters
+    the_list = @taco.list :filters => filters, :thin_issue => true
 
     if opts[:sort]
       attrs = opts[:sort].split(',').map(&:to_sym)
