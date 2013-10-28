@@ -14,6 +14,7 @@ class Taco
 
   def initialize(root_path=nil)
     @home = File.join(root_path || Dir.getwd, HOME_DIR)
+    @index_path = File.join(@home, '.index')
   end
 
   def init!
@@ -64,26 +65,23 @@ class Taco
   end
 
   def list(opts={})
-    filter_match = if opts.fetch(:filters, []).size > 0
-      conditions = opts[:filters].map do |filter|
-        attr, val = filter.split(':')
+    if opts.fetch(:filters, []).size > 0
+      the_index = JSON.parse(open(@index_path) { |f| f.read })
+
+      groups = opts[:filters].map do |filter|
+        attr, val = filter.split(':', 2)
         attr = Issue.schema_attr_expand(attr)
-        %Q|i.send("#{attr}").to_s.downcase == "#{val.downcase}"|
-      end.join ' && '
+        the_index[attr.to_s][val]
+      end
 
-      # FIXME: eval-ing user input? madness!
-      eval "Proc.new { |i| #{conditions} }"
+      ids = groups.inject { |common, group| common & group }.map { |id| File.join(@home, id) }
     else
-      nil
+      ids = Dir.glob("#{@home}/*")
     end
-
-    ids = Dir.glob("#{@home}/*")
 
     ids.map do |name|
       id = File.basename name
       issue = Issue.from_json(open(name) { |f| f.read })
-
-      next unless filter_match.nil? || filter_match.call(issue)
 
       raise Issue::Invalid.new("Issue ID does not match filename: #{issue.id} != #{id}") unless issue.id == id
 
@@ -111,6 +109,7 @@ class Taco
       the_hash = issue.to_hash.delete_if { |k,v| fields_to_ignore.include? k }
 
       the_hash.each do |k, v|
+        k, v = k.downcase, v.to_s.downcase
         attrmap[k] ||= {}
         attrmap[k][v] ||= []
         attrmap[k][v] << issue.id
@@ -121,7 +120,7 @@ class Taco
 
     the_json = attrmap.to_json
 
-    puts the_json
+    open(@index_path, 'w') { |f| f.write(the_json) }
   end
 end
 
