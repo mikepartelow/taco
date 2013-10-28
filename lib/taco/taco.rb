@@ -100,6 +100,29 @@ class Taco
       issue
     end.reject(&:nil?).sort
   end
+
+  def index!
+    attrmap = {}
+
+    list.each do |issue|
+      # FIXME: since we're stripping these attributes, we should explicitly disallow filtering/searching on them.
+      #
+      fields_to_ignore = [ :id, :created_at, :updated_at, :description, ]
+      the_hash = issue.to_hash.delete_if { |k,v| fields_to_ignore.include? k }
+
+      the_hash.each do |k, v|
+        attrmap[k] ||= {}
+        attrmap[k][v] ||= []
+        attrmap[k][v] << issue.id
+      end
+
+      the_hash
+    end
+
+    the_json = attrmap.to_json
+
+    puts the_json
+  end
 end
 
 class IssueEditor

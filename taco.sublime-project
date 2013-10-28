@@ -4,10 +4,13 @@
 		{
 			"file_exclude_patterns":
 			[
-
 				"Gemfile.lock",
 				".rspec",
 				".rvmrc"
+			],
+			"folder_exclude_patterns":
+			[
+				"livetaco"
 			],
 			"follow_symlinks": true,
 			"path": "/Users/osiris/code/github/taco/"

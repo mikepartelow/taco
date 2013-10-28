@@ -166,4 +166,8 @@ class TacoCLI
     cmd = "git add . && git commit -am '#{opts[:message]}' && git push"
     system(cmd)
   end
+
+  def index!
+    @taco.index!
+  end
 end

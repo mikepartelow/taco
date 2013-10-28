@@ -28,36 +28,36 @@ command :list do |c|
   c.syntax = 'taco list'
   c.summary = 'list all issues in the repository'
   c.description = 'List all taco Issues in the current repository'
-  
+
   c.option '--sort STRING', String, 'sort results by the given attributes'
-  
+
   c.example 'Sort Issues by Priority, Owner, and Kind', 'taco list --sort priority,owner,kind'
-  
+
   c.arguments lambda { |args| args.all? { |arg| arg =~ /\w+:\w+/ } }
-  
+
   c.action do |args, options|
     puts cli.list args, :sort => options.sort
   end
 end
-  
+
 command :new do |c|
   c.syntax = 'taco new [path_to_issue_template]'
   c.summary = 'create a new Issue'
   c.description = "Create a new Issue, interactively or from a template file.\n    Interactive mode launches $EDITOR with an Issue template."
   c.example 'interactive Issue creation', 'taco new'
-  c.example 'Issue creation from a file', 'taco new /path/to/template'    
-  
+  c.example 'Issue creation from a file', 'taco new /path/to/template'
+
   c.option '--retry', nil, 'retry a failed Issue creation'
-  
+
   c.arguments lambda { |args| true } #lambda { |args| args.size <= 1 }
-  
+
   c.action do |args, options|
     begin
       puts cli.new! args, { :retry => options.retry }
     rescue Issue::Invalid => e
-      raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")      
+      raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")
     end
-  end  
+  end
 end
 
 command :show do |c|
@@ -70,65 +70,75 @@ command :show do |c|
   c.example 'show Issue with changelog', 'taco show --changelog 9f9c52'
   c.example "show all Issues with 'kind' value 'kind2'", 'taco show --all kind:kind2'
   c.example "show all Issues with 'kind' value 'kind2' and 'owner' value 'mike'", 'taco show --all kind:kind2 owner:mike'
-  
+
   c.option '--changelog', nil, 'shows the changelog'
   c.option '--all', nil, 'show all Issues'
-  
+
   c.arguments lambda { |args| true } # argument validation (matching arguments to issues) will be done inside cli.show
-  
+
   c.action do |args, options|
     puts cli.show args, { :changelog => options.changelog, :all => options.all }
-  end  
+  end
 end
 
 command :edit do |c|
   c.syntax = 'taco edit <issue_id>'
   c.summary = 'edit an Issue'
   c.description = 'Edit details for an Issue'
-  
+
   c.option '--retry', nil, 'retry a failed Issue edit'
-  
+
   c.arguments lambda { |args| args.size == 1 }
-  
+
   c.action do |args, options|
     begin
       puts cli.edit! args, { :retry => options.retry }
     rescue Issue::Invalid => e
-      raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")      
-    end        
-  end  
+      raise Issue::Invalid.new("#{e.to_s}.\nYou can use the --retry option to correct this error.")
+    end
+  end
 end
 
 command :template do |c|
   c.syntax = 'taco template'
   c.summary = 'print the Issue template on stdout'
   c.description = 'Print the Issue template on stdout'
-  
+
   c.option '--defaults', nil, 'Print the Issue template with default values'
-  
+
   c.action do |args, options|
     puts cli.template({ :defaults => options.defaults })
-  end  
+  end
 end
 
 command :html do |c|
   c.syntax = 'taco html'
   c.summary = 'Generate an HTML buglist'
   c.description = 'Generate an HTML buglist from index.html.erb'
-  
+
   c.action do |args, options|
     puts cli.html
-  end  
+  end
 end
 
 command :push do |c|
   c.syntax = 'taco push'
   c.summary = 'Add, commit, and push all changes to git remote.'
   c.description = 'Shortcut for: git add . && git commit -a && git push'
-  
+
   c.option '--message STRING', String, 'Override the default commit message.'
-  
+
   c.action do |args, options|
     puts cli.push({ :message => options.message })
-  end  
+  end
+
+  command :index do |c|
+    c.syntax = 'taco index'
+    c.summary = 'Generate taco index'
+    c.description = 'Generate an index for faster listing.'
+
+    c.action do |args, options|
+      puts cli.index!
+    end
+  end
 end
